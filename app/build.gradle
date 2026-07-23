@@ -15,10 +15,10 @@ plugins {
 android {
 	compileSdk = 36
 	buildToolsVersion = '35.0.0'
-	namespace = 'org.koitharu.kotatsu'
+	namespace = 'org.wastaken.kotatsu.api21'
 
 	defaultConfig {
-		applicationId 'org.koitharu.kotatsu'
+		applicationId 'org.wastaken.kotatsu.api21'
 		minSdk = 21
 		targetSdk = 36
 		versionCode = 1028
