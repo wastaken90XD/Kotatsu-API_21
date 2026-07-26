@@ -15,7 +15,10 @@ plugins {
 android {
 	compileSdk = 36
 	buildToolsVersion = '35.0.0'
-	namespace = 'org.wastaken.kotatsu.api21'
+	// Must match the package of the Kotlin sources (org.koitharu.kotatsu.*), because the
+	// namespace is what R, BuildConfig and the ViewBinding classes are generated into.
+	// The app is still shipped under its own applicationId below.
+	namespace = 'org.koitharu.kotatsu'
 
 	defaultConfig {
 		applicationId 'org.wastaken.kotatsu.api21'
