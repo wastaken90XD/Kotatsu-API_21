@@ -2,12 +2,6 @@
 <androidx.preference.PreferenceScreen
 	xmlns:android="http://schemas.android.com/apk/res/android">
 
-	<org.wastaken.kotatsu.api21.settings.utils.SplitSwitchPreference
-		android:id="@+id/action_leakcanary"
-		android:key="leak_canary"
-		android:persistent="false"
-		android:title="LeakCanary" />
-
 	<Preference
 		android:id="@+id/action_works"
 		android:key="work_inspector"

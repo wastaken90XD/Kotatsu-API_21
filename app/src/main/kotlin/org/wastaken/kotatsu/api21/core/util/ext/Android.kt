@@ -58,6 +58,7 @@ import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserException
 import java.io.File
+import java.lang.reflect.Modifier
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToLong
 
@@ -252,4 +253,23 @@ private fun PowerManager?.newPartialWakeLock(tag: String): PowerManager.WakeLock
 fun Context.copyToClipboard(label: String, content: String) {
 	val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
 	clipboardManager.setPrimaryClip(ClipData.newPlainText(label, content))
+}
+
+/**
+ * On some OEM builds (e.g. Samsung) [ActivityManager] keeps a static `mContext`
+ * field that can end up pointing at the last activity that used it, preventing
+ * that activity from being garbage collected after it is destroyed.
+ * This clears the reference if it points to this activity, so it does not leak.
+ * Safe no-op on stock AOSP, where the field either doesn't exist or isn't static.
+ */
+fun Activity.clearActivityManagerLeak() {
+	runCatching {
+		val field = ActivityManager::class.java.getDeclaredField("mContext")
+		if (Modifier.isStatic(field.modifiers)) {
+			field.isAccessible = true
+			if (field.get(null) === this) {
+				field.set(null, null)
+			}
+		}
+	}
 }
