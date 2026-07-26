@@ -13,9 +13,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
-import kotlinx.serialization.json.DecodeSequenceMode
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeToSequence
 import kotlinx.serialization.json.encodeToStream
 import kotlinx.serialization.serializer
 import org.json.JSONArray
@@ -31,6 +29,7 @@ import org.wastaken.kotatsu.api21.backups.domain.BackupSection
 import org.wastaken.kotatsu.api21.core.db.MangaDatabase
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.util.CompositeResult
+import org.wastaken.kotatsu.api21.core.util.json.JsonArrayStreamReader
 import org.wastaken.kotatsu.api21.core.util.progress.Progress
 import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import org.wastaken.kotatsu.api21.reader.data.TapGridSettings
@@ -197,9 +196,25 @@ class BackupRepository @Inject constructor(
 		}
 	}
 
+	/**
+	 * Reads a JSON array lazily, one element at a time.
+	 *
+	 * Note: this deliberately avoids [kotlinx.serialization.json.decodeToSequence] /
+	 * `decodeFromStream`. Those read through an internal `CharsetReader` that
+	 * trips a decoder bug on Android 5.x (API 21-23, and this app supports 21),
+	 * failing with `IllegalArgumentException: Bad position (limit N): -NNNNN`
+	 * once the payload grows past the 16 KiB lexer buffer. Elements are sliced
+	 * out of the stream and parsed individually with [Json.decodeFromString],
+	 * which does not use the affected code path.
+	 * See https://github.com/Kotlin/kotlinx.serialization/issues/2457
+	 */
 	private fun <T> InputStream.readJsonArray(
 		serializer: DeserializationStrategy<T>,
-	): Sequence<T> = json.decodeToSequence(this, serializer, DecodeSequenceMode.ARRAY_WRAPPED)
+	): Sequence<T> {
+		val reader = JsonArrayStreamReader(this)
+		return generateSequence { reader.nextElement() }
+			.map { element -> json.decodeFromString(serializer, element) }
+	}
 
 	private fun InputStream.readMap(): Map<String, Any?> {
 		val jo = JSONArray(readString()).getJSONObject(0)

@@ -19,9 +19,16 @@ enum class BackupSection(
 
 	companion object {
 
+		/**
+		 * Returns `null` for entries that are not a known section.
+		 *
+		 * Note: this used to use `first`, which threw [NoSuchElementException]
+		 * on any unrecognised entry and aborted the whole restore - even though
+		 * every caller already handles `null` as "skip unknown entry".
+		 */
 		fun of(entry: ZipEntry): BackupSection? {
 			val name = entry.name.lowercase(Locale.ROOT)
-			return entries.first { x -> x.entryName == name }
+			return entries.firstOrNull { x -> x.entryName == name }
 		}
 	}
 }
