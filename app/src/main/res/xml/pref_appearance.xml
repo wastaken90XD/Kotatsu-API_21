@@ -4,7 +4,7 @@
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:title="@string/appearance">
 
-	<org.koitharu.kotatsu.settings.utils.ThemeChooserPreference
+	<org.wastaken.kotatsu.api21.settings.utils.ThemeChooserPreference
 		android:key="color_theme"
 		android:title="@string/color_theme"
 		app:isPreferenceVisible="@bool/is_color_themes_available" />
@@ -23,7 +23,7 @@
 		android:summary="@string/black_dark_theme_summary"
 		android:title="@string/black_dark_theme" />
 
-	<org.koitharu.kotatsu.settings.utils.ActivityListPreference
+	<org.wastaken.kotatsu.api21.settings.utils.ActivityListPreference
 		android:key="app_locale"
 		android:title="@string/language" />
 
@@ -35,7 +35,7 @@
 			android:title="@string/list_mode"
 			app:useSimpleSummaryProvider="true" />
 
-		<org.koitharu.kotatsu.settings.utils.SliderPreference
+		<org.wastaken.kotatsu.api21.settings.utils.SliderPreference
 			android:key="grid_size"
 			android:stepSize="5"
 			android:title="@string/grid_size"
@@ -91,7 +91,7 @@
 	<PreferenceCategory android:title="@string/main_screen">
 
 		<PreferenceScreen
-			android:fragment="org.koitharu.kotatsu.settings.nav.NavConfigFragment"
+			android:fragment="org.wastaken.kotatsu.api21.settings.nav.NavConfigFragment"
 			android:key="nav_main"
 			android:title="@string/main_screen_sections" />
 
