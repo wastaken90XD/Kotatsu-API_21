@@ -48,6 +48,7 @@ import org.wastaken.kotatsu.api21.core.ui.dialog.setCheckbox
 import org.wastaken.kotatsu.api21.core.ui.util.MenuInvalidator
 import org.wastaken.kotatsu.api21.core.ui.widgets.ZoomControl
 import org.wastaken.kotatsu.api21.core.util.IdlingDetector
+import org.wastaken.kotatsu.api21.core.util.ext.clearActivityManagerLeak
 import org.wastaken.kotatsu.api21.core.util.ext.getThemeDimensionPixelOffset
 import org.wastaken.kotatsu.api21.core.util.ext.hasGlobalPoint
 import org.wastaken.kotatsu.api21.core.util.ext.isAnimationsEnabled
@@ -211,6 +212,13 @@ class ReaderActivity :
 	override fun onStop() {
 		super.onStop()
 		viewModel.onStop()
+	}
+
+	override fun onDestroy() {
+		super.onDestroy()
+		// Some OEM builds keep a static reference to the last activity in
+		// ActivityManager, which retains this activity after destruction.
+		clearActivityManagerLeak()
 	}
 
 	override fun onProvideAssistContent(outContent: AssistContent) {

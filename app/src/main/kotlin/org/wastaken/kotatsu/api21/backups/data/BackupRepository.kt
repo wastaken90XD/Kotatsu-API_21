@@ -250,13 +250,59 @@ class BackupRepository @Inject constructor(
 		getMangaDao().upsert(manga.toEntity(), tags)
 	}
 
+	/**
+	 * Restores items in bounded-size batches instead of a single huge transaction
+	 * (which can hit SQLite row/transaction size limits on large history or
+	 * favourites backups) or one transaction per item (which is very slow for
+	 * large datasets). The sequence is consumed lazily, so only one batch is
+	 * held in memory at a time.
+	 *
+	 * If a batch transaction fails - e.g. because it is still too large - it is
+	 * split into smaller batches and retried, down to a single item if needed,
+	 * so one bad or oversized entry does not abort the whole restore.
+	 */
 	private suspend inline fun <T> Sequence<T>.restoreToDb(crossinline block: suspend MangaDatabase.(T) -> Unit): CompositeResult {
-		return fold(CompositeResult.EMPTY) { result, item ->
-			result + runCatchingCancellable {
+		var result = CompositeResult.EMPTY
+		for (chunk in chunked(RESTORE_BATCH_SIZE)) {
+			result += restoreChunk(chunk, block)
+		}
+		return result
+	}
+
+	// Not inline: this function recurses, which Kotlin does not allow for inline functions.
+	private suspend fun <T> restoreChunk(
+		chunk: List<T>,
+		block: suspend MangaDatabase.(T) -> Unit,
+	): CompositeResult {
+		if (chunk.isEmpty()) {
+			return CompositeResult.EMPTY
+		}
+		if (chunk.size == 1) {
+			val single = chunk[0]
+			return CompositeResult.EMPTY + runCatchingCancellable {
 				database.withTransaction {
+					database.block(single)
+				}
+			}
+		}
+		val batchResult = runCatchingCancellable {
+			database.withTransaction {
+				for (item in chunk) {
 					database.block(item)
 				}
 			}
 		}
+		if (batchResult.isSuccess) {
+			return chunk.fold(CompositeResult.EMPTY) { acc, _ -> acc + Result.success(Unit) }
+		}
+		// The whole batch failed (possibly due to hitting a size limit) - split it
+		// and retry, isolating the failure to a smaller subset of items.
+		val middle = chunk.size / 2
+		return restoreChunk(chunk.subList(0, middle), block) + restoreChunk(chunk.subList(middle, chunk.size), block)
+	}
+
+	private companion object {
+
+		private const val RESTORE_BATCH_SIZE = 200
 	}
 }
