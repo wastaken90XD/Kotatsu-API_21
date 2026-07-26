@@ -8,8 +8,8 @@
 	public static void checkParameterIsNotNull(...);
 	public static void checkNotNullParameter(...);
 }
--keep public class ** extends org.koitharu.kotatsu.core.ui.BaseFragment
--keep class org.koitharu.kotatsu.core.db.entity.* { *; }
+-keep public class ** extends org.wastaken.kotatsu.api21.core.ui.BaseFragment
+-keep class org.wastaken.kotatsu.api21.core.db.entity.* { *; }
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
@@ -17,10 +17,10 @@
 -dontwarn com.google.j2objc.annotations.**
 -dontwarn coil3.PlatformContext
 
--keep class org.koitharu.kotatsu.core.exceptions.* { *; }
--keep class org.koitharu.kotatsu.settings.NotificationSettingsLegacyFragment
--keep class org.koitharu.kotatsu.core.prefs.ScreenshotsPolicy { *; }
--keep class org.koitharu.kotatsu.backups.ui.periodical.PeriodicalBackupSettingsFragment { *; }
+-keep class org.wastaken.kotatsu.api21.core.exceptions.* { *; }
+-keep class org.wastaken.kotatsu.api21.settings.NotificationSettingsLegacyFragment
+-keep class org.wastaken.kotatsu.api21.core.prefs.ScreenshotsPolicy { *; }
+-keep class org.wastaken.kotatsu.api21.backups.ui.periodical.PeriodicalBackupSettingsFragment { *; }
 -keep class org.jsoup.parser.Tag
 -keep class org.jsoup.internal.StringUtil
 

@@ -15,6 +15,8 @@ plugins {
 android {
 	compileSdk = 36
 	buildToolsVersion = '35.0.0'
+	// Must match the package of the Kotlin sources (org.wastaken.kotatsu.api21.*), because the
+	// namespace is what R, BuildConfig and the ViewBinding classes are generated into.
 	namespace = 'org.wastaken.kotatsu.api21'
 
 	defaultConfig {
@@ -24,7 +26,7 @@ android {
 		versionCode = 1028
 		versionName = '9.1.4'
 		generatedDensities = []
-		testInstrumentationRunner 'org.koitharu.kotatsu.HiltTestRunner'
+		testInstrumentationRunner 'org.wastaken.kotatsu.api21.HiltTestRunner'
 		ksp {
 			arg('room.generateKotlin', 'true')
 		}
@@ -118,11 +120,11 @@ dependencies {
 	def parsersVersion = libs.versions.parsers.get()
 	if (System.properties.containsKey('parsersVersionOverride')) {
 		// usage:
-		// -DparsersVersionOverride=$(curl -s https://api.github.com/repos/kotatsuapp/kotatsu-parsers/commits/master -H "Accept: application/vnd.github.sha" | cut -c -10)
+		// -DparsersVersionOverride=$(curl -s https://api.github.com/repos/wastaken90XD/kotatsu-parsers/commits/master -H "Accept: application/vnd.github.sha" | cut -c -10)
 		parsersVersion = System.getProperty('parsersVersionOverride')
 	}
 	//noinspection UseTomlInstead
-	implementation("com.github.KotatsuApp:kotatsu-parsers:8a147dbdd3") {
+	implementation("com.github.wastaken90XD:kotatsu-parsers:$parsersVersion") {
 		exclude group: 'org.json', module: 'json'
 	}
 
