@@ -8,13 +8,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
 import org.wastaken.kotatsu.api21.backups.data.model.BackupIndex
 import org.wastaken.kotatsu.api21.backups.domain.BackupSection
 import org.wastaken.kotatsu.api21.core.nav.AppRouter
 import org.wastaken.kotatsu.api21.core.ui.BaseViewModel
 import org.wastaken.kotatsu.api21.core.util.ext.printStackTraceDebug
 import org.wastaken.kotatsu.api21.core.util.ext.toUriOrNull
+import org.wastaken.kotatsu.api21.core.util.json.JsonArrayStreamReader
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.util.Date
@@ -103,9 +103,19 @@ class RestoreViewModel @Inject constructor(
 		}
 	}
 
+	/**
+	 * Reads the backup index entry.
+	 *
+	 * Uses [JsonArrayStreamReader] + [Json.decodeFromString] rather than
+	 * `decodeFromStream`, which crashes on Android 5.x (API 21-23) with
+	 * `IllegalArgumentException: Bad position`.
+	 * See https://github.com/Kotlin/kotlinx.serialization/issues/2457
+	 */
 	private fun InputStream.readDate(): Date? = runCatching {
-		val index = Json.decodeFromStream<List<BackupIndex>>(this)
-		Date(index.single().createdAt)
+		val element = checkNotNull(JsonArrayStreamReader(this).nextElement()) {
+			"Backup index is empty"
+		}
+		Date(Json.decodeFromString<BackupIndex>(element).createdAt)
 	}.onFailure { e ->
 		e.printStackTraceDebug()
 	}.getOrNull()

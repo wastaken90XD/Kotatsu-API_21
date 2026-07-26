@@ -13,9 +13,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
-import kotlinx.serialization.json.DecodeSequenceMode
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeToSequence
 import kotlinx.serialization.json.encodeToStream
 import kotlinx.serialization.serializer
 import org.json.JSONArray
@@ -31,6 +29,7 @@ import org.wastaken.kotatsu.api21.backups.domain.BackupSection
 import org.wastaken.kotatsu.api21.core.db.MangaDatabase
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.util.CompositeResult
+import org.wastaken.kotatsu.api21.core.util.json.JsonArrayStreamReader
 import org.wastaken.kotatsu.api21.core.util.progress.Progress
 import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import org.wastaken.kotatsu.api21.reader.data.TapGridSettings
@@ -128,43 +127,52 @@ class BackupRepository @Inject constructor(
 		while (entry != null) {
 			val section = BackupSection.of(entry)
 			if (section in sections) {
-				result = result + when (section) {
-					BackupSection.INDEX -> CompositeResult.EMPTY // useless in our case
-					BackupSection.HISTORY -> input.readJsonArray<HistoryBackup>(serializer()).restoreToDb {
-						upsertManga(it.manga)
-						getHistoryDao().upsert(it.toEntity())
-					}
+				// A section that fails outright (bad settings JSON, unreadable
+				// zip entry, ...) must not prevent the remaining sections from
+				// being restored, so failures are contained per section.
+				val sectionResult = runCatchingCancellable {
+					when (section) {
+						BackupSection.INDEX -> CompositeResult.EMPTY // useless in our case
+						BackupSection.HISTORY -> input.readJsonArray<HistoryBackup>(serializer()).restoreToDb {
+							upsertManga(it.manga)
+							getHistoryDao().upsert(it.toEntity())
+						}
 
-					BackupSection.CATEGORIES -> input.readJsonArray<CategoryBackup>(serializer()).restoreToDb {
-						getFavouriteCategoriesDao().upsert(it.toEntity())
-					}
+						BackupSection.CATEGORIES -> input.readJsonArray<CategoryBackup>(serializer()).restoreToDb {
+							getFavouriteCategoriesDao().upsert(it.toEntity())
+						}
 
-					BackupSection.FAVOURITES -> input.readJsonArray<FavouriteBackup>(serializer()).restoreToDb {
-						upsertManga(it.manga)
-						getFavouritesDao().upsert(it.toEntity())
-					}
+						BackupSection.FAVOURITES -> input.readJsonArray<FavouriteBackup>(serializer()).restoreToDb {
+							upsertManga(it.manga)
+							getFavouritesDao().upsert(it.toEntity())
+						}
 
-					BackupSection.SETTINGS -> input.readMap().let {
-						settings.upsertAll(it)
-						CompositeResult.success()
-					}
+						BackupSection.SETTINGS -> input.readMap().let {
+							settings.upsertAll(it)
+							CompositeResult.success()
+						}
 
-					BackupSection.SETTINGS_READER_GRID -> input.readMap().let {
-						tapGridSettings.upsertAll(it)
-						CompositeResult.success()
-					}
+						BackupSection.SETTINGS_READER_GRID -> input.readMap().let {
+							tapGridSettings.upsertAll(it)
+							CompositeResult.success()
+						}
 
-					BackupSection.BOOKMARKS -> input.readJsonArray<BookmarkBackup>(serializer()).restoreToDb {
-						upsertManga(it.manga)
-						getBookmarksDao().upsert(it.bookmarks.map { b -> b.toEntity() })
-					}
+						BackupSection.BOOKMARKS -> input.readJsonArray<BookmarkBackup>(serializer()).restoreToDb {
+							upsertManga(it.manga)
+							getBookmarksDao().upsert(it.bookmarks.map { b -> b.toEntity() })
+						}
 
-					BackupSection.SOURCES -> input.readJsonArray<SourceBackup>(serializer()).restoreToDb {
-						getSourcesDao().upsert(it.toEntity())
-					}
+						BackupSection.SOURCES -> input.readJsonArray<SourceBackup>(serializer()).restoreToDb {
+							getSourcesDao().upsert(it.toEntity())
+						}
 
-					null -> CompositeResult.EMPTY // skip unknown entries
+						null -> CompositeResult.EMPTY // skip unknown entries
+					}
+				}.getOrElse { error ->
+					// Whole section failed - record it and move on to the next one
+					CompositeResult.failure(error)
 				}
+				result += sectionResult
 				progress?.emit(commonProgress)
 				commonProgress++
 			}
@@ -197,9 +205,58 @@ class BackupRepository @Inject constructor(
 		}
 	}
 
+	/**
+	 * Reads a JSON array lazily, one element at a time, as a sequence of
+	 * [Result]s so that a single bad entry cannot abort the whole restore.
+	 *
+	 * Two failure modes are distinguished:
+	 *
+	 * - A single element fails to deserialize (valid JSON, but an unexpected
+	 *   shape - e.g. a field added or removed across app versions). The element
+	 *   boundary is still intact, so the failure is reported and reading
+	 *   continues with the next element.
+	 * - The JSON itself is structurally broken or truncated. There is no
+	 *   reliable way to find the next element boundary, so the failure is
+	 *   reported and the sequence ends, abandoning just this section.
+	 *
+	 * Either way this sequence never throws, so the caller keeps processing the
+	 * remaining sections of the backup.
+	 *
+	 * Note: this deliberately avoids [kotlinx.serialization.json.decodeToSequence] /
+	 * `decodeFromStream`. Those read through an internal `CharsetReader` that
+	 * trips a decoder bug on Android 5.x (API 21-23, and this app supports 21),
+	 * failing with `IllegalArgumentException: Bad position (limit N): -NNNNN`
+	 * once the payload grows past the 16 KiB lexer buffer. Elements are sliced
+	 * out of the stream and parsed individually with [Json.decodeFromString],
+	 * which does not use the affected code path.
+	 * See https://github.com/Kotlin/kotlinx.serialization/issues/2457
+	 */
 	private fun <T> InputStream.readJsonArray(
 		serializer: DeserializationStrategy<T>,
-	): Sequence<T> = json.decodeToSequence(this, serializer, DecodeSequenceMode.ARRAY_WRAPPED)
+	): Sequence<Result<T>> {
+		val reader = JsonArrayStreamReader(this)
+		return sequence {
+			var failureCount = 0
+			while (true) {
+				val elementResult = runCatchingCancellable { reader.nextElement() }
+				val readError = elementResult.exceptionOrNull()
+				if (readError != null) {
+					// Structural damage: cannot resync, so give up on this section
+					yield(Result.failure<T>(readError))
+					break
+				}
+				val element = elementResult.getOrNull() ?: break // end of array
+				val result = runCatchingCancellable { json.decodeFromString(serializer, element) }
+				yield(result)
+				if (result.isFailure && ++failureCount >= MAX_ELEMENT_FAILURES) {
+					// Everything is failing - most likely an incompatible backup
+					// rather than isolated corruption. Stop instead of collecting
+					// (and later rendering) thousands of identical errors.
+					break
+				}
+			}
+		}
+	}
 
 	private fun InputStream.readMap(): Map<String, Any?> {
 		val jo = JSONArray(readString()).getJSONObject(0)
@@ -261,10 +318,18 @@ class BackupRepository @Inject constructor(
 	 * split into smaller batches and retried, down to a single item if needed,
 	 * so one bad or oversized entry does not abort the whole restore.
 	 */
-	private suspend inline fun <T> Sequence<T>.restoreToDb(noinline block: suspend MangaDatabase.(T) -> Unit): CompositeResult {
+	private suspend inline fun <T> Sequence<Result<T>>.restoreToDb(
+		noinline block: suspend MangaDatabase.(T) -> Unit,
+	): CompositeResult {
 		var result = CompositeResult.EMPTY
 		for (chunk in chunked(RESTORE_BATCH_SIZE)) {
-			result += restoreChunk(chunk, block)
+			// Entries that could not even be parsed are counted as failures and
+			// skipped; the rest are still written to the database.
+			val (parsed, failed) = chunk.partition { it.isSuccess }
+			for (failure in failed) {
+				result += failure
+			}
+			result += restoreChunk(parsed.map { it.getOrThrow() }, block)
 		}
 		return result
 	}
@@ -304,5 +369,12 @@ class BackupRepository @Inject constructor(
 	private companion object {
 
 		private const val RESTORE_BATCH_SIZE = 200
+
+		/**
+		 * How many elements of a section may fail to parse before the section
+		 * is abandoned. Guards against an incompatible backup producing an
+		 * error per entry.
+		 */
+		private const val MAX_ELEMENT_FAILURES = 100
 	}
 }
