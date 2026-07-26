@@ -59,6 +59,7 @@ class JsonArrayStreamReader(
 	private var isEndOfInput = false
 	private var isDrained = false
 	private var isStarted = false
+	private var isArrayOpened = false
 	private var isFinished = false
 	private var pendingChar = NO_CHAR
 
@@ -70,14 +71,22 @@ class JsonArrayStreamReader(
 		if (isFinished) {
 			return null
 		}
+		var isAfterSeparator = false
 		if (isStarted) {
 			when (val separator = nextNonWhitespaceChar()) {
-				NO_CHAR, ']'.code -> {
+				NO_CHAR -> {
+					// The array was never closed: the data is truncated, and
+					// silently reporting success would hide the missing entries.
+					isFinished = true
+					throw EOFException("Malformed JSON: unterminated array")
+				}
+
+				']'.code -> {
 					isFinished = true
 					return null
 				}
 
-				','.code -> Unit
+				','.code -> isAfterSeparator = true
 				else -> throw IOException(
 					"Malformed JSON: expected ',' or ']' but was '${separator.toChar()}'",
 				)
@@ -91,14 +100,22 @@ class JsonArrayStreamReader(
 					return null
 				}
 
-				'['.code -> Unit
+				'['.code -> isArrayOpened = true
 				else -> throw IOException(
 					"Malformed JSON: expected '[' but was '${start.toChar()}'",
 				)
 			}
 		}
 		val first = nextNonWhitespaceChar()
-		if (first == NO_CHAR || first == ']'.code) {
+		if (first == NO_CHAR) {
+			isFinished = true
+			if (isAfterSeparator || isArrayOpened) {
+				// Truncated after '[' or a ',' - the array was never closed
+				throw EOFException("Malformed JSON: unterminated array")
+			}
+			return null
+		}
+		if (first == ']'.code) {
 			isFinished = true
 			return null
 		}

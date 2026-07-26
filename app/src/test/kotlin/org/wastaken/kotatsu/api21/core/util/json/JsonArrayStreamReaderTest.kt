@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.io.InputStream
 
 /**
@@ -115,6 +116,44 @@ class JsonArrayStreamReaderTest {
 		val result = readAll(json, chunkSize = 3)
 		assertEquals(count, result.size)
 		assertEquals(element(count - 1), result.last())
+	}
+
+	/**
+	 * A truncated array must not look like a clean end of data, otherwise a
+	 * partial restore would be reported to the user as a complete success.
+	 */
+	@Test
+	fun truncatedArrayIsReportedAsAnError() {
+		val truncations = listOf(
+			"[",
+			"[{\"id\":1},",
+			"[{\"id\":1}, ",
+			"[{\"id\":1},{\"id\":2}",
+			"[{\"id\":1},{\"id\":2",
+		)
+		for (json in truncations) {
+			try {
+				readAll(json)
+				throw AssertionError("Expected truncated input to fail: $json")
+			} catch (expected: IOException) {
+				// Expected: EOFException is an IOException
+			}
+		}
+	}
+
+	@Test
+	fun elementsBeforeTruncationAreStillReturned() {
+		val reader = JsonArrayStreamReader(
+			ByteArrayInputStream("""[{"id":1},{"id":2},""".toByteArray()),
+		)
+		assertEquals("""{"id":1}""", reader.nextElement())
+		assertEquals("""{"id":2}""", reader.nextElement())
+		try {
+			reader.nextElement()
+			throw AssertionError("Expected truncated input to fail")
+		} catch (expected: IOException) {
+			// Expected
+		}
 	}
 
 	@Test
