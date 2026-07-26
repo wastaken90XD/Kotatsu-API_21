@@ -261,7 +261,7 @@ class BackupRepository @Inject constructor(
 	 * split into smaller batches and retried, down to a single item if needed,
 	 * so one bad or oversized entry does not abort the whole restore.
 	 */
-	private suspend inline fun <T> Sequence<T>.restoreToDb(crossinline block: suspend MangaDatabase.(T) -> Unit): CompositeResult {
+	private suspend inline fun <T> Sequence<T>.restoreToDb(noinline block: suspend MangaDatabase.(T) -> Unit): CompositeResult {
 		var result = CompositeResult.EMPTY
 		for (chunk in chunked(RESTORE_BATCH_SIZE)) {
 			result += restoreChunk(chunk, block)
