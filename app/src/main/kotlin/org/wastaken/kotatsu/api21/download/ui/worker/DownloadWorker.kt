@@ -79,7 +79,6 @@ import org.wastaken.kotatsu.api21.local.data.LocalMangaRepository
 import org.wastaken.kotatsu.api21.local.data.LocalStorageCache
 import org.wastaken.kotatsu.api21.local.data.LocalStorageChanges
 import org.wastaken.kotatsu.api21.local.data.PageCache
-import org.wastaken.kotatsu.api21.local.data.TempFileFilter
 import org.wastaken.kotatsu.api21.local.data.input.LocalMangaParser
 import org.wastaken.kotatsu.api21.local.data.output.LocalMangaOutput
 import org.wastaken.kotatsu.api21.local.domain.MangaLock
@@ -117,6 +116,7 @@ class DownloadWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
 	private val task = DownloadTask(params.inputData)
+	private val tempFilePrefix = "${params.id}-"
 	private val notificationFactory = notificationFactoryFactory.create(uuid = params.id, isSilent = task.isSilent)
 	private val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -298,8 +298,12 @@ class DownloadWorker @AssistedInject constructor(
 					applicationContext.unregisterReceiver(pausingReceiver)
 					output?.closeQuietly()
 					output?.cleanup()
-					destination.listFiles(TempFileFilter())?.forEach {
-						it.deleteAwait()
+					// Do not delete every *.tmp in the destination: other DownloadWorker instances
+					// may be actively writing their own files there during concurrent downloads.
+					destination.listFiles()?.forEach {
+						if (it.isWorkerTempFile()) {
+							it.deleteAwait()
+						}
 					}
 				}
 			}
@@ -421,6 +425,7 @@ class DownloadWorker @AssistedInject constructor(
 	private fun File.createTempFile(ext: String?) = File(
 		this,
 		buildString {
+			append(tempFilePrefix)
 			append(UUID.randomUUID().toString())
 			if (!ext.isNullOrEmpty()) {
 				append('.')
@@ -429,6 +434,10 @@ class DownloadWorker @AssistedInject constructor(
 			append(".tmp")
 		},
 	)
+
+	private fun File.isWorkerTempFile() = isFile &&
+		name.startsWith(tempFilePrefix) &&
+		name.endsWith(".tmp", ignoreCase = true)
 
 	private suspend fun publishState(state: DownloadState) {
 		val previousState = currentState
