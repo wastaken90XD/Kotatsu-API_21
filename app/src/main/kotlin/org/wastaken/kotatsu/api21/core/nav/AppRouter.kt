@@ -100,6 +100,7 @@ import org.wastaken.kotatsu.api21.settings.override.OverrideConfigActivity
 import org.wastaken.kotatsu.api21.settings.reader.ReaderTapGridConfigActivity
 import org.wastaken.kotatsu.api21.settings.sources.auth.SourceAuthActivity
 import org.wastaken.kotatsu.api21.settings.sources.catalog.SourcesCatalogActivity
+import org.wastaken.kotatsu.api21.settings.sources.cookies.CookiesActivity
 import org.wastaken.kotatsu.api21.settings.storage.MangaDirectorySelectDialog
 import org.wastaken.kotatsu.api21.settings.storage.directories.MangaDirectoriesActivity
 import org.wastaken.kotatsu.api21.settings.tracker.categories.TrackerCategoriesConfigSheet
@@ -296,6 +297,13 @@ class AppRouter private constructor(
 
 	fun openSourceAuth(source: MangaSource) {
 		startActivity(sourceAuthIntent(contextOrNull() ?: return, source))
+	}
+
+	fun openCookies(source: MangaSource) {
+		startActivity(
+			Intent(contextOrNull() ?: return, CookiesActivity::class.java)
+				.putExtra(KEY_SOURCE, source.name),
+		)
 	}
 
 	fun openManageSources() {

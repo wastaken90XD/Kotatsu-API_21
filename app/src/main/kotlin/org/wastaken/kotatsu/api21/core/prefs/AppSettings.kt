@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.onStart
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.model.ZoomMode
 import org.wastaken.kotatsu.api21.core.network.DoHProvider
+import org.wastaken.kotatsu.api21.core.network.proxy.ProxyType
 import org.wastaken.kotatsu.api21.core.util.ext.connectivityManager
 import org.wastaken.kotatsu.api21.core.util.ext.getEnumValue
 import org.wastaken.kotatsu.api21.core.util.ext.observeChanges
@@ -39,7 +40,6 @@ import org.koitharu.kotatsu.parsers.util.mapToSet
 import org.koitharu.kotatsu.parsers.util.nullIfEmpty
 import org.wastaken.kotatsu.api21.reader.domain.ReaderColorFilter
 import java.io.File
-import java.net.Proxy
 import java.util.EnumSet
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -448,11 +448,8 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		get() = prefs.getBoolean(KEY_SSL_BYPASS, false)
 		set(value) = prefs.edit { putBoolean(KEY_SSL_BYPASS, value) }
 
-	val proxyType: Proxy.Type
-		get() {
-			val raw = prefs.getString(KEY_PROXY_TYPE, null) ?: return Proxy.Type.DIRECT
-			return enumValues<Proxy.Type>().find { it.name == raw } ?: Proxy.Type.DIRECT
-		}
+	val proxyType: ProxyType
+		get() = ProxyType.of(prefs.getString(KEY_PROXY_TYPE, null))
 
 	val proxyAddress: String?
 		get() = prefs.getString(KEY_PROXY_ADDRESS, null)
@@ -465,6 +462,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 
 	val proxyPassword: String?
 		get() = prefs.getString(KEY_PROXY_PASSWORD, null)?.nullIfEmpty()
+
+	val proxySecret: String?
+		get() = prefs.getString(KEY_PROXY_SECRET, null)?.nullIfEmpty()
 
 	var localListOrder: SortOrder
 		get() = prefs.getEnumValue(KEY_LOCAL_LIST_ORDER, SortOrder.NEWEST)
@@ -659,6 +659,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_PAGES_CACHE_CLEAR = "pages_cache_clear"
 		const val KEY_HTTP_CACHE_CLEAR = "http_cache_clear"
 		const val KEY_COOKIES_CLEAR = "cookies_clear"
+		const val KEY_COOKIES_MANAGE = "cookies_manage"
 		const val KEY_CHAPTERS_CLEAR = "chapters_clear"
 		const val KEY_CHAPTERS_CLEAR_AUTO = "chapters_clear_auto"
 		const val KEY_THUMBS_CACHE_CLEAR = "thumbs_cache_clear"
@@ -764,6 +765,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_PROXY_AUTH = "proxy_auth"
 		const val KEY_PROXY_LOGIN = "proxy_login"
 		const val KEY_PROXY_PASSWORD = "proxy_password"
+		const val KEY_PROXY_SECRET = "proxy_secret"
 		const val KEY_IMAGES_PROXY = "images_proxy_2"
 		const val KEY_LOCAL_MANGA_DIRS = "local_manga_dirs"
 		const val KEY_DISABLE_NSFW = "no_nsfw"

@@ -53,71 +53,106 @@ class ProxyProvider @Inject constructor(
 	}
 
 	suspend fun applyWebViewConfig() {
-		val isProxyEnabled = isProxyEnabled()
+		val type = settings.proxyType
 		if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
-			if (isProxyEnabled) {
+			if (type != ProxyType.DIRECT) {
 				throw IllegalArgumentException("Proxy for WebView is not supported") // TODO localize
 			}
-		} else {
-			val controller = ProxyController.getInstance()
-			if (settings.proxyType == Proxy.Type.DIRECT) {
-				suspendCoroutine { cont ->
-					controller.clearProxyOverride(
-						(cont.context[CoroutineDispatcher] ?: Dispatchers.Main).asExecutor(),
-					) {
-						cont.resume(Unit)
-					}
+			return
+		}
+		val controller = ProxyController.getInstance()
+		// MTPROTO is not supported by the app network stack (see ProxyType docs);
+		// behave as DIRECT for WebView as well.
+		if (type == ProxyType.DIRECT || type == ProxyType.MTPROTO) {
+			suspendCoroutine { cont ->
+				controller.clearProxyOverride(
+					(cont.context[CoroutineDispatcher] ?: Dispatchers.Main).asExecutor(),
+				) {
+					cont.resume(Unit)
 				}
-			} else {
-				val url = buildString {
-					when (settings.proxyType) {
-						Proxy.Type.DIRECT -> Unit
-						Proxy.Type.HTTP -> append("http")
-						Proxy.Type.SOCKS -> append("socks")
-					}
-					append("://")
-					append(settings.proxyAddress)
-					append(':')
-					append(settings.proxyPort)
-				}
-				if (settings.proxyType == Proxy.Type.SOCKS) {
-					System.setProperty("java.net.socks.username", settings.proxyLogin)
-					System.setProperty("java.net.socks.password", settings.proxyPassword)
-				}
-				val proxyConfig = ProxyConfig.Builder()
-					.addProxyRule(url)
-					.build()
-				suspendCoroutine { cont ->
-					controller.setProxyOverride(
-						proxyConfig,
-						(cont.context[CoroutineDispatcher] ?: Dispatchers.Main).asExecutor(),
-					) {
-						cont.resume(Unit)
-					}
-				}
+			}
+			return
+		}
+		val scheme = when (type) {
+			ProxyType.HTTP -> "http"
+			ProxyType.HTTPS -> "https" // WebView (Chromium) does support TLS proxies
+			ProxyType.SOCKS4 -> "socks4"
+			ProxyType.SOCKS5 -> "socks5"
+			// DIRECT and MTPROTO are handled above
+			else -> throw ProxyConfigException()
+		}
+		val url = buildString {
+			append(scheme)
+			append("://")
+			append(settings.proxyAddress)
+			append(':')
+			append(settings.proxyPort)
+		}
+		if (type.isSocks) {
+			settings.proxyLogin?.let { System.setProperty("java.net.socks.username", it) }
+			settings.proxyPassword?.let { System.setProperty("java.net.socks.password", it) }
+		}
+		val proxyConfig = ProxyConfig.Builder()
+			.addProxyRule(url)
+			.build()
+		suspendCoroutine { cont ->
+			controller.setProxyOverride(
+				proxyConfig,
+				(cont.context[CoroutineDispatcher] ?: Dispatchers.Main).asExecutor(),
+			) {
+				cont.resume(Unit)
 			}
 		}
 	}
 
-	private fun isProxyEnabled() = settings.proxyType != Proxy.Type.DIRECT
+	private fun isProxyEnabled(): Boolean {
+		val type = settings.proxyType
+		// MTPROTO is stored but not actually applied (see ProxyType docs)
+		return type != ProxyType.DIRECT && type != ProxyType.MTPROTO
+	}
 
 	private fun getProxy(): Proxy {
 		val type = settings.proxyType
-		val address = settings.proxyAddress
-		val port = settings.proxyPort
-		if (type == Proxy.Type.DIRECT) {
+		if (type == ProxyType.DIRECT) {
 			return Proxy.NO_PROXY
 		}
+		// MTProto proxies require the Telegram obfuscated transport, which cannot be
+		// implemented within OkHttp/java.net (it is neither an HTTP CONNECT proxy nor
+		// a SOCKS proxy). Configuration is accepted and stored for future use,
+		// but connections are made directly for now.
+		if (type == ProxyType.MTPROTO) {
+			return Proxy.NO_PROXY
+		}
+		val address = settings.proxyAddress
+		val port = settings.proxyPort
 		if (address.isNullOrEmpty() || port < 0 || port > 0xFFFF) {
 			throw ProxyConfigException()
 		}
+		val javaType = when (type) {
+			// Both HTTP and HTTPS are served by the HTTP proxy implementation:
+			// OkHttp cannot open a TLS channel to the proxy itself (see ProxyType docs).
+			ProxyType.HTTP, ProxyType.HTTPS -> Proxy.Type.HTTP
+			ProxyType.SOCKS4 -> {
+				// JVM-wide hint honored by the JDK SOCKS implementation.
+				// Runtimes without SOCKSv4 support simply negotiate SOCKS5.
+				System.setProperty("socksProxyVersion", "4")
+				Proxy.Type.SOCKS
+			}
+
+			ProxyType.SOCKS5 -> {
+				System.setProperty("socksProxyVersion", "5")
+				Proxy.Type.SOCKS
+			}
+
+			else -> throw ProxyConfigException() // unreachable: DIRECT/MTPROTO handled above
+		}
 		cachedProxy?.let {
 			val addr = it.address() as? InetSocketAddress
-			if (addr != null && it.type() == type && addr.port == port && addr.hostString == address) {
+			if (addr != null && it.type() == javaType && addr.port == port && addr.hostString == address) {
 				return it
 			}
 		}
-		val proxy = Proxy(type, InetSocketAddress(address, port))
+		val proxy = Proxy(javaType, InetSocketAddress(address, port))
 		cachedProxy = proxy
 		return proxy
 	}

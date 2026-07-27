@@ -217,6 +217,10 @@
 			android:name="org.wastaken.kotatsu.api21.settings.override.OverrideConfigActivity"
 			android:label="@string/edit" />
 		<activity
+			android:name="org.wastaken.kotatsu.api21.settings.sources.cookies.CookiesActivity"
+			android:label="@string/cookies"
+			android:windowSoftInputMode="adjustResize" />
+		<activity
 			android:name="org.wastaken.kotatsu.api21.sync.ui.SyncAuthActivity"
 			android:exported="true"
 			android:label="@string/sync" />

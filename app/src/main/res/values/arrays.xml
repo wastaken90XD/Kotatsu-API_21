@@ -60,7 +60,10 @@
 	<string-array name="proxy_types" translatable="false">
 		<item>@string/disabled</item>
 		<item>HTTP</item>
-		<item>SOCKS (v4/v5)</item>
+		<item>HTTPS</item>
+		<item>SOCKS4</item>
+		<item>SOCKS5</item>
+		<item>MTProto</item>
 	</string-array>
 	<string-array name="reader_backgrounds" translatable="false">
 		<item>@string/system_default</item>

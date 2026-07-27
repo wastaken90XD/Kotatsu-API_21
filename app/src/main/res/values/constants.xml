@@ -53,7 +53,10 @@
 	<string-array name="values_proxy_types" translatable="false">
 		<item>DIRECT</item>
 		<item>HTTP</item>
-		<item>SOCKS</item>
+		<item>HTTPS</item>
+		<item>SOCKS4</item>
+		<item>SOCKS5</item>
+		<item>MTPROTO</item>
 	</string-array>
 	<string-array name="values_backup_frequency" translatable="false">
 		<item>1</item>

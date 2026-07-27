@@ -1,5 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	<!-- Primavera -->
+	<style name="ThemeOverlay.Kotatsu.Primavera">
+		<item name="colorPrimary">@color/primavera_primary</item>
+		<item name="colorOnPrimary">@color/primavera_onPrimary</item>
+		<item name="colorPrimaryContainer">@color/primavera_primaryContainer</item>
+		<item name="colorOnPrimaryContainer">@color/primavera_onPrimaryContainer</item>
+		<item name="colorSecondary">@color/primavera_secondary</item>
+		<item name="colorOnSecondary">@color/primavera_onSecondary</item>
+		<item name="colorSecondaryContainer">@color/primavera_secondaryContainer</item>
+		<item name="colorOnSecondaryContainer">@color/primavera_onSecondaryContainer</item>
+		<item name="colorTertiary">@color/primavera_tertiary</item>
+		<item name="colorOnTertiary">@color/primavera_onTertiary</item>
+		<item name="colorTertiaryContainer">@color/primavera_tertiaryContainer</item>
+		<item name="colorOnTertiaryContainer">@color/primavera_onTertiaryContainer</item>
+		<item name="colorError">@color/primavera_error</item>
+		<item name="colorOnError">@color/primavera_onError</item>
+		<item name="colorErrorContainer">@color/primavera_errorContainer</item>
+		<item name="colorOnErrorContainer">@color/primavera_onErrorContainer</item>
+		<item name="android:colorBackground">@color/primavera_background</item>
+		<item name="colorOnBackground">@color/primavera_onBackground</item>
+		<item name="colorSurface">@color/primavera_surface</item>
+		<item name="colorOnSurface">@color/primavera_onSurface</item>
+		<item name="colorSurfaceVariant">@color/primavera_surfaceVariant</item>
+		<item name="colorOnSurfaceVariant">@color/primavera_onSurfaceVariant</item>
+		<item name="colorOutline">@color/primavera_outline</item>
+		<item name="colorOutlineVariant">@color/primavera_outlineVariant</item>
+		<item name="colorSurfaceInverse">@color/primavera_inverseSurface</item>
+		<item name="colorOnSurfaceInverse">@color/primavera_inverseOnSurface</item>
+		<item name="colorPrimaryInverse">@color/primavera_inversePrimary</item>
+		<item name="colorPrimaryFixed">@color/primavera_primaryFixed</item>
+		<item name="colorOnPrimaryFixed">@color/primavera_onPrimaryFixed</item>
+		<item name="colorPrimaryFixedDim">@color/primavera_primaryFixedDim</item>
+		<item name="colorOnPrimaryFixedVariant">@color/primavera_onPrimaryFixedVariant</item>
+		<item name="colorSecondaryFixed">@color/primavera_secondaryFixed</item>
+		<item name="colorOnSecondaryFixed">@color/primavera_onSecondaryFixed</item>
+		<item name="colorSecondaryFixedDim">@color/primavera_secondaryFixedDim</item>
+		<item name="colorOnSecondaryFixedVariant">@color/primavera_onSecondaryFixedVariant</item>
+		<item name="colorTertiaryFixed">@color/primavera_tertiaryFixed</item>
+		<item name="colorOnTertiaryFixed">@color/primavera_onTertiaryFixed</item>
+		<item name="colorTertiaryFixedDim">@color/primavera_tertiaryFixedDim</item>
+		<item name="colorOnTertiaryFixedVariant">@color/primavera_onTertiaryFixedVariant</item>
+		<item name="colorSurfaceDim">@color/primavera_surfaceDim</item>
+		<item name="colorSurfaceBright">@color/primavera_surfaceBright</item>
+		<item name="colorSurfaceContainerLowest">@color/primavera_surfaceContainerLowest</item>
+		<item name="colorSurfaceContainerLow">@color/primavera_surfaceContainerLow</item>
+		<item name="colorSurfaceContainer">@color/primavera_surfaceContainer</item>
+		<item name="colorSurfaceContainerHigh">@color/primavera_surfaceContainerHigh</item>
+		<item name="colorSurfaceContainerHighest">@color/primavera_surfaceContainerHighest</item>
+	</style>
 	<!-- Totoro -->
 	<style name="ThemeOverlay.Kotatsu.Totoro">
 		<item name="colorPrimary">@color/totoro_primary</item>

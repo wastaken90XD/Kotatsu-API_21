@@ -17,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.network.BaseHttpClient
+import org.wastaken.kotatsu.api21.core.network.proxy.ProxyType
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.ui.BasePreferenceFragment
 import org.wastaken.kotatsu.api21.core.util.ext.getDisplayMessage
@@ -26,8 +27,8 @@ import org.koitharu.kotatsu.parsers.util.await
 import org.wastaken.kotatsu.api21.settings.utils.EditTextBindListener
 import org.wastaken.kotatsu.api21.settings.utils.PasswordSummaryProvider
 import org.wastaken.kotatsu.api21.settings.utils.validation.DomainValidator
+import org.wastaken.kotatsu.api21.settings.utils.validation.HexSecretValidator
 import org.wastaken.kotatsu.api21.settings.utils.validation.PortNumberValidator
-import java.net.Proxy
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -59,6 +60,17 @@ class ProxySettingsFragment : BasePreferenceFragment(R.string.proxy),
 				validator = PortNumberValidator(),
 			),
 		)
+		findPreference<EditTextPreference>(AppSettings.KEY_PROXY_SECRET)?.let { pref ->
+			@Suppress("UsePropertyAccessSyntax")
+			pref.setOnBindEditTextListener(
+				EditTextBindListener(
+					inputType = EditorInfo.TYPE_CLASS_TEXT or EditorInfo.TYPE_TEXT_VARIATION_PASSWORD,
+					hint = null,
+					validator = HexSecretValidator(),
+				),
+			)
+			pref.summaryProvider = PasswordSummaryProvider()
+		}
 		findPreference<EditTextPreference>(AppSettings.KEY_PROXY_PASSWORD)?.let { pref ->
 			@Suppress("UsePropertyAccessSyntax")
 			pref.setOnBindEditTextListener(
@@ -94,21 +106,61 @@ class ProxySettingsFragment : BasePreferenceFragment(R.string.proxy),
 
 	override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
 		when (key) {
-			AppSettings.KEY_PROXY_TYPE -> updateDependencies()
+			AppSettings.KEY_PROXY_TYPE -> {
+				updateDependencies()
+				testConnectionIfConfigured()
+			}
+
+			AppSettings.KEY_PROXY_ADDRESS,
+			AppSettings.KEY_PROXY_PORT,
+			-> testConnectionIfConfigured()
 		}
 	}
 
 	private fun updateDependencies() {
-		val isProxyEnabled = settings.proxyType != Proxy.Type.DIRECT
+		val type = settings.proxyType
+		val isProxyEnabled = type != ProxyType.DIRECT
 		findPreference<Preference>(AppSettings.KEY_PROXY_ADDRESS)?.isEnabled = isProxyEnabled
 		findPreference<Preference>(AppSettings.KEY_PROXY_PORT)?.isEnabled = isProxyEnabled
-		findPreference<PreferenceCategory>(AppSettings.KEY_PROXY_AUTH)?.isEnabled = isProxyEnabled
+		// MTProto uses a secret instead of the login/password pair (see ProxyType docs),
+		// so the auth category is simply hidden for it.
+		findPreference<Preference>(AppSettings.KEY_PROXY_SECRET)?.isVisible = type == ProxyType.MTPROTO
+		findPreference<PreferenceCategory>(AppSettings.KEY_PROXY_AUTH)?.run {
+			isVisible = type != ProxyType.MTPROTO
+			isEnabled = isProxyEnabled
+		}
 		findPreference<Preference>(AppSettings.KEY_PROXY_LOGIN)?.isEnabled = isProxyEnabled
 		findPreference<Preference>(AppSettings.KEY_PROXY_PASSWORD)?.isEnabled = isProxyEnabled
 		findPreference<Preference>(AppSettings.KEY_PROXY_TEST)?.isEnabled = isProxyEnabled && testJob?.isActive != true
 	}
 
+	/**
+	 * Test the connection through the just-saved proxy configuration, so an invalid
+	 * configuration is reported to the user immediately (before leaving the screen).
+	 */
+	private fun testConnectionIfConfigured() {
+		val type = settings.proxyType
+		if (type == ProxyType.DIRECT) {
+			return
+		}
+		// MTProto cannot be tested: it is not supported by the network stack (see ProxyType)
+		if (type == ProxyType.MTPROTO) {
+			showMessage(getString(R.string.proxy_mtproto_not_supported))
+			return
+		}
+		if (settings.proxyAddress.isNullOrEmpty() || settings.proxyPort == 0) {
+			return
+		}
+		testConnection()
+	}
+
 	private fun testConnection() {
+		if (settings.proxyType == ProxyType.MTPROTO) {
+			// Not supported by the network stack, a direct connection would give
+			// a false positive. Just inform the user.
+			showMessage(getString(R.string.proxy_mtproto_not_supported))
+			return
+		}
 		testJob?.cancel()
 		testJob = viewLifecycleScope.launch {
 			val pref = findPreference<Preference>(AppSettings.KEY_PROXY_TEST)
@@ -145,6 +197,15 @@ class ProxySettingsFragment : BasePreferenceFragment(R.string.proxy),
 		MaterialAlertDialogBuilder(requireContext())
 			.setTitle(R.string.proxy)
 			.setMessage(error?.getDisplayMessage(resources) ?: getString(R.string.connection_ok))
+			.setPositiveButton(android.R.string.ok, null)
+			.setCancelable(true)
+			.show()
+	}
+
+	private fun showMessage(message: CharSequence) {
+		MaterialAlertDialogBuilder(requireContext())
+			.setTitle(R.string.proxy)
+			.setMessage(message)
 			.setPositiveButton(android.R.string.ok, null)
 			.setCancelable(true)
 			.show()

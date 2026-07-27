@@ -22,6 +22,11 @@
 		android:title="@string/port"
 		app:useSimpleSummaryProvider="true" />
 
+	<EditTextPreference
+		android:key="proxy_secret"
+		android:title="@string/proxy_secret"
+		app:isPreferenceVisible="false" />
+
 	<PreferenceCategory
 		android:key="proxy_auth"
 		android:title="@string/authorization_optional">

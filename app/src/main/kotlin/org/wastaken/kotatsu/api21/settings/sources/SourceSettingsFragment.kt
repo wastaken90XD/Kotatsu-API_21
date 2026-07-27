@@ -106,6 +106,11 @@ class SourceSettingsFragment : BasePreferenceFragment(0), Preference.OnPreferenc
 				true
 			}
 
+			AppSettings.KEY_COOKIES_MANAGE -> {
+				router.openCookies(viewModel.source)
+				true
+			}
+
 			AppSettings.KEY_COOKIES_CLEAR -> {
 				viewModel.clearCookies()
 				true
