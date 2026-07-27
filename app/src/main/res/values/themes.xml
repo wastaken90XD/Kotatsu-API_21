@@ -39,6 +39,8 @@
 		<item name="colorOutline">@color/kotatsu_outline</item>
 		<item name="colorOutlineVariant">@color/kotatsu_outline</item>
 		<item name="colorAccent">@color/kotatsu_secondary</item>
+		<!-- Text links use the brand primary (terracotta) instead of the platform blue -->
+		<item name="android:textColorLink">?attr/colorPrimary</item>
 
 		<!-- Drawables (icons) -->
 		<item name="actionModeCloseDrawable">@drawable/abc_ic_clear_material</item>

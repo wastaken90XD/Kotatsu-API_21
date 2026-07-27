@@ -29,12 +29,14 @@ enum class ColorScheme(
 
 	companion object {
 
+		/**
+		 * The out-of-the-box color scheme of the app.
+		 * Primavera (the DEFAULT entry) is used regardless of dynamic color support,
+		 * so the app has a consistent brand palette on every device.
+		 * Dynamic schemes (MONET/EXPRESSIVE) remain selectable in settings.
+		 */
 		val default: ColorScheme
-			get() = if (DynamicColors.isDynamicColorAvailable()) {
-				MONET
-			} else {
-				DEFAULT
-			}
+			get() = DEFAULT
 
 		fun getAvailableList(): List<ColorScheme> {
 			val list = ColorScheme.entries.toMutableList()

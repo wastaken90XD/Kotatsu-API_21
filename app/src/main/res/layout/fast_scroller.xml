@@ -33,7 +33,7 @@
 		android:singleLine="true"
 		android:visibility="invisible"
 		tools:background="@drawable/fastscroll_bubble"
-		tools:backgroundTint="@color/blue_primary"
+		tools:backgroundTint="@color/kotatsu_primary"
 		tools:text="A"
 		tools:textColor="#ffffff"
 		tools:visibility="visible" />
