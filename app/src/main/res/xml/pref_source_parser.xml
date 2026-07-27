@@ -12,8 +12,16 @@
 		app:allowDividerAbove="true" />
 
 	<Preference
-		android:key="cookies_clear"
+		android:key="cookies_manage"
 		android:order="101"
+		android:persistent="false"
+		android:summary="@string/manage_cookies_summary"
+		android:title="@string/cookies"
+		app:allowDividerAbove="true" />
+
+	<Preference
+		android:key="cookies_clear"
+		android:order="102"
 		android:persistent="false"
 		android:summary="@string/clear_source_cookies_summary"
 		android:title="@string/clear_cookies"

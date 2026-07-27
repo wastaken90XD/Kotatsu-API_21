@@ -8,11 +8,11 @@ import androidx.preference.Preference
 import com.google.android.material.snackbar.Snackbar
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.network.DoHProvider
+import org.wastaken.kotatsu.api21.core.network.proxy.ProxyType
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.ui.BasePreferenceFragment
 import org.wastaken.kotatsu.api21.core.util.ext.setDefaultValueCompat
 import org.koitharu.kotatsu.parsers.util.names
-import java.net.Proxy
 
 class NetworkSettingsFragment :
 	BasePreferenceFragment(R.string.network),
@@ -57,7 +57,7 @@ class NetworkSettingsFragment :
 			val address = settings.proxyAddress
 			val port = settings.proxyPort
 			summary = when {
-				type == Proxy.Type.DIRECT -> context.getString(R.string.disabled)
+				type == ProxyType.DIRECT -> context.getString(R.string.disabled)
 				address.isNullOrEmpty() || port == 0 -> context.getString(R.string.invalid_proxy_configuration)
 				else -> "$address:$port"
 			}

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	android:paddingHorizontal="@dimen/margin_normal"
+	android:paddingTop="@dimen/margin_normal">
+
+	<com.google.android.material.textfield.TextInputLayout
+		android:id="@+id/layout_name"
+		style="?textInputOutlinedStyle"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:hint="@string/name">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:id="@+id/edit_name"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:imeOptions="actionNext"
+			android:inputType="text"
+			android:maxLines="1"
+			tools:text="session_id" />
+
+	</com.google.android.material.textfield.TextInputLayout>
+
+	<com.google.android.material.textfield.TextInputLayout
+		android:id="@+id/layout_value"
+		style="?textInputOutlinedStyle"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="@dimen/margin_small"
+		android:hint="@string/value">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:id="@+id/edit_value"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:imeOptions="actionNext"
+			android:inputType="text"
+			android:maxLines="2"
+			tools:text="e8f0b2c4a1d9" />
+
+	</com.google.android.material.textfield.TextInputLayout>
+
+	<com.google.android.material.textfield.TextInputLayout
+		android:id="@+id/layout_domain"
+		style="?textInputOutlinedStyle"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="@dimen/margin_small"
+		android:hint="@string/domain">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:id="@+id/edit_domain"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:imeOptions="actionDone"
+			android:inputType="textUri"
+			android:maxLines="1"
+			tools:text="example.com" />
+
+	</com.google.android.material.textfield.TextInputLayout>
+
+	<TextView
+		android:id="@+id/textView_hint"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="@dimen/margin_small"
+		android:paddingBottom="@dimen/margin_small"
+		android:text="@string/cookie_injection_hint"
+		android:textAppearance="?attr/textAppearanceBodySmall" />
+
+</LinearLayout>

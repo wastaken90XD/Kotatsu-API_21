@@ -32,6 +32,14 @@ class AndroidCookieJar : MutableCookieJar {
 		}
 	}
 
+	@WorkerThread
+	override fun insertCookie(url: HttpUrl, rawSetCookie: String) {
+		if (rawSetCookie.isBlank()) {
+			return
+		}
+		cookieManager.setCookie(url.toString(), rawSetCookie.trim())
+	}
+
 	override fun removeCookies(url: HttpUrl, predicate: Predicate<Cookie>?) {
 		val cookies = loadForRequest(url)
 		if (cookies.isEmpty()) {
