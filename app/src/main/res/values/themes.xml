@@ -39,6 +39,9 @@
 		<item name="colorOutline">@color/kotatsu_outline</item>
 		<item name="colorOutlineVariant">@color/kotatsu_outline</item>
 		<item name="colorAccent">@color/kotatsu_secondary</item>
+		<!-- Legacy M2 attribute still referenced by some selectors (e.g. list_item_text_color);
+		     map it to the brand primary so nothing falls back to the default purple -->
+		<item name="colorPrimaryDark">?attr/colorPrimary</item>
 		<!-- Text links use the brand primary (terracotta) instead of the platform blue -->
 		<item name="android:textColorLink">?attr/colorPrimary</item>
 
