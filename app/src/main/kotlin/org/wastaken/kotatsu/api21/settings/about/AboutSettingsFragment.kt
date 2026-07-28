@@ -24,6 +24,7 @@ import org.wastaken.kotatsu.api21.core.util.ext.getThemeColor
 import org.wastaken.kotatsu.api21.core.util.ext.observe
 import org.wastaken.kotatsu.api21.core.util.ext.observeEvent
 import com.google.android.material.R as materialR
+import androidx.appcompat.R as appcompatR
 
 @AndroidEntryPoint
 class AboutSettingsFragment : BasePreferenceFragment(R.string.about) {
@@ -54,7 +55,7 @@ class AboutSettingsFragment : BasePreferenceFragment(R.string.about) {
 		val rawName = PreferenceManager.getDefaultSharedPreferences(activity)
 			.getString(AppSettings.KEY_COLOR_THEME, null) ?: "<unset>"
 		val effective = settings.colorScheme
-		val primary = activity.getThemeColor(materialR.attr.colorPrimary, 0)
+		val primary = activity.getThemeColor(appcompatR.attr.colorPrimary, 0)
 		val surface = activity.getThemeColor(materialR.attr.colorSurface, 0)
 		val background = activity.getThemeColor(android.R.attr.colorBackground, 0)
 		val pref = Preference(preferenceScreen.context)
