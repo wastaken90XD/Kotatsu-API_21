@@ -1,5 +1,6 @@
 package org.wastaken.kotatsu.api21.core.prefs
 
+import android.os.Build
 import androidx.annotation.Keep
 import androidx.annotation.StringRes
 import androidx.annotation.StyleRes
@@ -41,10 +42,13 @@ enum class ColorScheme(
 	 * scheme there would silently use the Material dynamic fallback palette.
 	 */
 	fun availableOrDefault(): ColorScheme {
-		return if (isDynamic && !DynamicColors.isDynamicColorAvailable()) {
-			default
-		} else {
-			this
+		return when {
+			// This fork targets API 21+: on Lollipop the scheme picker is hidden
+			// and only the default Primavera palette is guaranteed to render
+			// correctly, so ignore any stored (e.g. backup-restored) scheme there.
+			Build.VERSION.SDK_INT < Build.VERSION_CODES.M -> default
+			isDynamic && !DynamicColors.isDynamicColorAvailable() -> default
+			else -> this
 		}
 	}
 

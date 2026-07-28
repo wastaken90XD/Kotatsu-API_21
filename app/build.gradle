@@ -22,7 +22,10 @@ android {
 	defaultConfig {
 		applicationId 'org.wastaken.kotatsu.api21'
 		minSdk = 21
-		targetSdk = 36
+		// Hard-targeted at API 21 (personal fork, newer-API compat is not a goal).
+		// compileSdk stays at 36: it is only the API level the code is compiled against
+		// (required by AndroidX) and does not affect which devices can run the app.
+		targetSdk = 21
 		versionCode = 1028
 		versionName = '9.1.4'
 		generatedDensities = []
