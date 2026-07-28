@@ -1,5 +1,6 @@
 package org.wastaken.kotatsu.api21.core.prefs
 
+import android.os.Build
 import androidx.annotation.Keep
 import androidx.annotation.StringRes
 import androidx.annotation.StyleRes
@@ -27,14 +28,40 @@ enum class ColorScheme(
 	ITSUKA(R.style.ThemeOverlay_Kotatsu_Itsuka, R.string.theme_name_itsuka),
 	;
 
+	/**
+	 * Schemes based on dynamic (wallpaper-derived) colors. They only render
+	 * correctly when the platform supports dynamic color.
+	 */
+	val isDynamic: Boolean
+		get() = this == MONET || this == EXPRESSIVE
+
+	/**
+	 * Returns this scheme if it can be rendered on this device, or [default] otherwise.
+	 * Protects against a stored scheme that the device cannot render (e.g. after
+	 * restoring a settings backup from a newer device): applying a dynamic
+	 * scheme there would silently use the Material dynamic fallback palette.
+	 */
+	fun availableOrDefault(): ColorScheme {
+		return when {
+			// This fork targets API 21+: on Lollipop the scheme picker is hidden
+			// and only the default Primavera palette is guaranteed to render
+			// correctly, so ignore any stored (e.g. backup-restored) scheme there.
+			Build.VERSION.SDK_INT < Build.VERSION_CODES.M -> default
+			isDynamic && !DynamicColors.isDynamicColorAvailable() -> default
+			else -> this
+		}
+	}
+
 	companion object {
 
+		/**
+		 * The out-of-the-box color scheme of the app.
+		 * Primavera (the DEFAULT entry) is used regardless of dynamic color support,
+		 * so the app has a consistent brand palette on every device.
+		 * Dynamic schemes (MONET/EXPRESSIVE) remain selectable in settings.
+		 */
 		val default: ColorScheme
-			get() = if (DynamicColors.isDynamicColorAvailable()) {
-				MONET
-			} else {
-				DEFAULT
-			}
+			get() = DEFAULT
 
 		fun getAvailableList(): List<ColorScheme> {
 			val list = ColorScheme.entries.toMutableList()

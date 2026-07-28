@@ -161,7 +161,7 @@ class TrackerNotificationHelper @Inject constructor(
 			.setName(applicationContext.getString(R.string.new_chapters))
 			.setDescription(applicationContext.getString(R.string.show_notification_new_chapters_on))
 			.setShowBadge(true)
-			.setLightColor(ContextCompat.getColor(applicationContext, R.color.blue_primary))
+			.setLightColor(ContextCompat.getColor(applicationContext, R.color.kotatsu_primary))
 			.build()
 		manager.createNotificationChannel(channel)
 	}
@@ -173,7 +173,7 @@ class TrackerNotificationHelper @Inject constructor(
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
 			builder.setSound(settings.notificationSound)
 			var defaults = if (settings.notificationLight) {
-				builder.setLights(ContextCompat.getColor(applicationContext, R.color.blue_primary), 1000, 5000)
+				builder.setLights(ContextCompat.getColor(applicationContext, R.color.kotatsu_primary), 1000, 5000)
 				NotificationCompat.DEFAULT_LIGHTS
 			} else 0
 			if (settings.notificationVibrate) {
