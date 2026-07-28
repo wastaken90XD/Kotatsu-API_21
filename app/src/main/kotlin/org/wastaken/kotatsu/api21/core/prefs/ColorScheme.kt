@@ -27,6 +27,27 @@ enum class ColorScheme(
 	ITSUKA(R.style.ThemeOverlay_Kotatsu_Itsuka, R.string.theme_name_itsuka),
 	;
 
+	/**
+	 * Schemes based on dynamic (wallpaper-derived) colors. They only render
+	 * correctly when the platform supports dynamic color.
+	 */
+	val isDynamic: Boolean
+		get() = this == MONET || this == EXPRESSIVE
+
+	/**
+	 * Returns this scheme if it can be rendered on this device, or [default] otherwise.
+	 * Protects against a stored scheme that the device cannot render (e.g. after
+	 * restoring a settings backup from a newer device): applying a dynamic
+	 * scheme there would silently use the Material dynamic fallback palette.
+	 */
+	fun availableOrDefault(): ColorScheme {
+		return if (isDynamic && !DynamicColors.isDynamicColorAvailable()) {
+			default
+		} else {
+			this
+		}
+	}
+
 	companion object {
 
 		/**
