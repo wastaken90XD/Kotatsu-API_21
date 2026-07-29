@@ -12,8 +12,6 @@ import okhttp3.internal.http2.StreamResetException
 import okio.FileNotFoundException
 import okio.IOException
 import okio.ProtocolException
-import org.acra.ktx.sendSilentlyWithAcra
-import org.acra.ktx.sendWithAcra
 import org.jsoup.HttpStatusException
 import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
@@ -228,11 +226,10 @@ fun Throwable.isNetworkError(): Boolean {
 }
 
 fun Throwable.report(silent: Boolean = false) {
-	val exception = CaughtException(this)
-	if (!silent) {
-		exception.sendWithAcra()
-	} else if (!BuildConfig.DEBUG) {
-		exception.sendSilentlyWithAcra()
+	// Personal fork: ACRA HTTP sender is disabled, so there is nowhere
+	// to send crash reports.  Log locally for debug builds.
+	if (BuildConfig.DEBUG) {
+		CaughtException(this).printStackTrace()
 	}
 }
 

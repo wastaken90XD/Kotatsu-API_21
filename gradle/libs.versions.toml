@@ -49,6 +49,7 @@ workRuntime = "2.10.2"
 workinspector = "1.2"
 
 [libraries]
+acra-core = { module = "ch.acra:acra-core", version.ref = "acra" }
 acra-dialog = { module = "ch.acra:acra-dialog", version.ref = "acra" }
 acra-http = { module = "ch.acra:acra-http", version.ref = "acra" }
 adapterdelegates = { module = "com.hannesdorfmann:adapterdelegates4-kotlin-dsl", version.ref = "adapterdelegates" }
