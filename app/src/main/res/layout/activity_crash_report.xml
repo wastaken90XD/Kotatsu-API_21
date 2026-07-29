@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical"
+	android:background="?android:colorBackground">
+
+	<com.google.android.material.appbar.MaterialToolbar
+		android:id="@+id/toolbar"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:background="?attr/colorSurface" />
+
+	<ScrollView
+		android:id="@+id/scrollView"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_weight="1"
+		android:paddingHorizontal="@dimen/margin_normal"
+		android:paddingTop="@dimen/margin_normal">
+
+		<TextView
+			android:id="@+id/textView_report"
+			style="?textAppearanceBodySmall"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:fontFamily="monospace"
+			android:textIsSelectable="true"
+			tools:text="@tools:sample/lorem[50]" />
+
+	</ScrollView>
+
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		android:gravity="end"
+		android:paddingHorizontal="@dimen/margin_normal"
+		android:paddingVertical="@dimen/margin_small"
+		android:background="?attr/colorSurface">
+
+		<Button
+			android:id="@+id/button_copy"
+			style="?materialButtonOutlinedStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginEnd="@dimen/margin_small"
+			android:text="@string/copy" />
+
+		<Button
+			android:id="@+id/button_share"
+			style="?materialButtonOutlinedStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/share" />
+
+	</LinearLayout>
+
+</LinearLayout>

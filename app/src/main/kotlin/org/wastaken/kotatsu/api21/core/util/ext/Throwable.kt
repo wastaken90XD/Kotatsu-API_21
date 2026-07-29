@@ -13,7 +13,6 @@ import okio.FileNotFoundException
 import okio.IOException
 import okio.ProtocolException
 import org.jsoup.HttpStatusException
-import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.exceptions.BadBackupFormatException
 import org.wastaken.kotatsu.api21.core.exceptions.CaughtException
@@ -225,13 +224,7 @@ fun Throwable.isNetworkError(): Boolean {
 		|| this is HttpException && response.code == HttpURLConnection.HTTP_GATEWAY_TIMEOUT
 }
 
-fun Throwable.report(silent: Boolean = false) {
-	// Personal fork: ACRA HTTP sender is disabled, so there is nowhere
-	// to send crash reports.  Log locally for debug builds.
-	if (BuildConfig.DEBUG) {
-		CaughtException(this).printStackTrace()
-	}
-}
+
 
 fun Throwable.isWebViewUnavailable(): Boolean {
 	val trace = stackTraceToString()

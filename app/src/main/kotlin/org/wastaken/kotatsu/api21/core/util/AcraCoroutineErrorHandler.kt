@@ -1,8 +1,9 @@
 package org.wastaken.kotatsu.api21.core.util
 
+import android.util.Log
 import kotlinx.coroutines.CoroutineExceptionHandler
 import org.wastaken.kotatsu.api21.core.util.ext.printStackTraceDebug
-import org.wastaken.kotatsu.api21.core.util.ext.report
+import org.koitharu.kotatsu.parsers.exception.toCrashReport
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
@@ -11,6 +12,6 @@ class AcraCoroutineErrorHandler : AbstractCoroutineContextElement(CoroutineExcep
 
 	override fun handleException(context: CoroutineContext, exception: Throwable) {
 		exception.printStackTraceDebug()
-		exception.report()
+		Log.e("CoroutineError", exception.toCrashReport())
 	}
 }

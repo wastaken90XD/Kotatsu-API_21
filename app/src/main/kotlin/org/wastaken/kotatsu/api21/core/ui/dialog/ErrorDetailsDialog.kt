@@ -1,5 +1,6 @@
 package org.wastaken.kotatsu.api21.core.ui.dialog
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -15,11 +16,10 @@ import org.wastaken.kotatsu.api21.core.ui.AlertDialogFragment
 import org.wastaken.kotatsu.api21.core.util.ext.copyToClipboard
 import org.wastaken.kotatsu.api21.core.util.ext.getCauseUrl
 import org.wastaken.kotatsu.api21.core.util.ext.isHttpUrl
-import org.wastaken.kotatsu.api21.core.util.ext.isReportable
-import org.wastaken.kotatsu.api21.core.util.ext.report
 import org.wastaken.kotatsu.api21.core.util.ext.requireSerializable
 import org.wastaken.kotatsu.api21.core.util.ext.setTextAndVisible
 import org.wastaken.kotatsu.api21.databinding.DialogErrorDetailsBinding
+import org.koitharu.kotatsu.parsers.exception.toCrashReport
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -50,8 +50,6 @@ class ErrorDetailsDialog : AlertDialogFragment<DialogErrorDetailsBinding>(), Vie
 		binding.textViewDescription.setTextAndVisible(
 			if (appUpdateRepository.isUpdateAvailable) {
 				R.string.error_disclaimer_app_outdated
-			} else if (exception.isReportable()) {
-				R.string.error_disclaimer_report
 			} else {
 				0
 			},
@@ -64,17 +62,22 @@ class ErrorDetailsDialog : AlertDialogFragment<DialogErrorDetailsBinding>(), Vie
 			.setCancelable(true)
 			.setNegativeButton(R.string.close, null)
 			.setTitle(R.string.error_details)
-			.setNeutralButton(androidx.preference.R.string.copy) { _, _ ->
-				context?.copyToClipboard(getString(R.string.error), exception.stackTraceToString())
+			.setNeutralButton(R.string.copy) { _, _ ->
+				context?.copyToClipboard(getString(R.string.error), exception.toCrashReport())
 			}
 		if (appUpdateRepository.isUpdateAvailable) {
 			builder.setPositiveButton(R.string.update) { _, _ ->
 				router.openAppUpdate()
 				dismiss()
 			}
-		} else if (exception.isReportable()) {
-			builder.setPositiveButton(R.string.report) { _, _ ->
-				exception.report(silent = true)
+		} else {
+			builder.setPositiveButton(R.string.share) { _, _ ->
+				val sendIntent = Intent(Intent.ACTION_SEND).apply {
+					type = "text/plain"
+					putExtra(Intent.EXTRA_TEXT, exception.toCrashReport())
+					putExtra(Intent.EXTRA_SUBJECT, getString(R.string.error_details))
+				}
+				startActivity(Intent.createChooser(sendIntent, getString(R.string.crash_report_share)))
 				dismiss()
 			}
 		}

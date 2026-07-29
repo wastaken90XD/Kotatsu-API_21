@@ -19,6 +19,7 @@ import org.acra.ktx.initAcra
 import org.conscrypt.Conscrypt
 import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
+import org.wastaken.kotatsu.api21.core.crash.CrashReportHandler
 import org.wastaken.kotatsu.api21.core.db.MangaDatabase
 import org.wastaken.kotatsu.api21.core.os.AppValidator
 import org.wastaken.kotatsu.api21.core.os.RomCompat
@@ -78,6 +79,10 @@ open class BaseApp : Application(), Configuration.Provider {
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
+		// If the previous launch crashed, show the report before anything else
+		CrashReportHandler.peekCrashReport(this)?.let { report ->
+			startActivity(CrashReportHandler.launchIntent(this, report))
+		}
 		AppCompatDelegate.setDefaultNightMode(settings.theme)
 		// TLS 1.3 support for Android < 10
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -98,6 +103,7 @@ open class BaseApp : Application(), Configuration.Provider {
 
 	override fun attachBaseContext(base: Context) {
 		super.attachBaseContext(base)
+		CrashReportHandler.install(this)
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
