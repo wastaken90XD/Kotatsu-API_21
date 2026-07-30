@@ -79,6 +79,7 @@ open class BaseApp : Application(), Configuration.Provider {
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
+		CrashReportHandler.install(this)
 		AppCompatDelegate.setDefaultNightMode(settings.theme)
 		// TLS 1.3 support for Android < 10
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -99,7 +100,6 @@ open class BaseApp : Application(), Configuration.Provider {
 
 	override fun attachBaseContext(base: Context) {
 		super.attachBaseContext(base)
-		CrashReportHandler.install(this)
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
