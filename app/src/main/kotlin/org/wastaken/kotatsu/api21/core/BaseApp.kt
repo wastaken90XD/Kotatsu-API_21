@@ -19,7 +19,6 @@ import org.acra.ktx.initAcra
 import org.conscrypt.Conscrypt
 import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
-import org.wastaken.kotatsu.api21.core.crash.CrashReportHandler
 import org.wastaken.kotatsu.api21.core.db.MangaDatabase
 import org.wastaken.kotatsu.api21.core.os.AppValidator
 import org.wastaken.kotatsu.api21.core.os.RomCompat
@@ -79,7 +78,6 @@ open class BaseApp : Application(), Configuration.Provider {
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
-		CrashReportHandler.install(this)
 		AppCompatDelegate.setDefaultNightMode(settings.theme)
 		// TLS 1.3 support for Android < 10
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
