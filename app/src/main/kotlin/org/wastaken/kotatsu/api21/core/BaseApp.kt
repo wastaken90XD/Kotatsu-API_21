@@ -79,10 +79,6 @@ open class BaseApp : Application(), Configuration.Provider {
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
-		// If the previous launch crashed, show the report before anything else
-		CrashReportHandler.peekCrashReport(this)?.let { report ->
-			startActivity(CrashReportHandler.launchIntent(this, report))
-		}
 		AppCompatDelegate.setDefaultNightMode(settings.theme)
 		// TLS 1.3 support for Android < 10
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {

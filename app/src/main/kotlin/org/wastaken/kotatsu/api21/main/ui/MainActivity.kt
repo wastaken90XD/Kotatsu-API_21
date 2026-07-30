@@ -45,6 +45,7 @@ import kotlinx.coroutines.withContext
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.backups.ui.periodical.PeriodicalBackupService
 import org.wastaken.kotatsu.api21.browser.AdListUpdateService
+import org.wastaken.kotatsu.api21.core.crash.CrashReportHandler
 import org.wastaken.kotatsu.api21.core.exceptions.resolve.SnackbarErrorObserver
 import org.wastaken.kotatsu.api21.core.nav.router
 import org.wastaken.kotatsu.api21.core.os.VoiceInputContract
@@ -106,6 +107,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), AppBarOwner, BottomNav
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		// Show crash report from the previous session, if any.
+		// Must run here (not in Application.onCreate) because
+		// CrashReportActivity is @AndroidEntryPoint and needs Hilt
+		// to be fully initialised.
+		if (savedInstanceState == null) {
+			CrashReportHandler.peekCrashReport(applicationContext)?.let { report ->
+				startActivity(CrashReportHandler.launchIntent(this, report))
+			}
+		}
 		setContentView(ActivityMainBinding.inflate(layoutInflater))
 		setSupportActionBar(viewBinding.searchBar)
 
