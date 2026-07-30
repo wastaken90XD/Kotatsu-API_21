@@ -10,10 +10,11 @@ import androidx.core.app.PendingIntentCompat
 import androidx.core.net.toUri
 import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
+import org.wastaken.kotatsu.api21.core.crash.CrashReportHandler
 import org.wastaken.kotatsu.api21.core.nav.AppRouter
 import org.wastaken.kotatsu.api21.core.util.ext.getSerializableExtraCompat
 import org.wastaken.kotatsu.api21.core.util.ext.printStackTraceDebug
-import org.wastaken.kotatsu.api21.core.util.ext.report
+import org.koitharu.kotatsu.parsers.exception.toCrashReport
 
 class ErrorReporterReceiver : BroadcastReceiver() {
 
@@ -24,7 +25,10 @@ class ErrorReporterReceiver : BroadcastReceiver() {
 			val notificationTag = intent.getStringExtra(EXTRA_NOTIFICATION_TAG)
 			NotificationManagerCompat.from(context).cancel(notificationTag, notificationId)
 		}
-		e.report()
+		if (context != null) {
+			val report = e.toCrashReport()
+			context.startActivity(CrashReportHandler.launchIntent(context, report))
+		}
 	}
 
 	companion object {

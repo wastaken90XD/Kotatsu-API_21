@@ -1,23 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pre-v23 fallback: on API 21-22 the scheme picker is hidden and
+  availableOrDefault() always resolves to DEFAULT, but every static
+  overlay still needs a valid parent so setTheme() does not discard
+  Base.Theme.Kotatsu (which carries the Primavera palette).
+  On API 23+ the values-v23 version of this file takes priority and
+  provides per-scheme attribute overrides.
+-->
 <resources>
 
-	<style name="ThemeOverlay.Kotatsu.Primavera" />
+	<style name="ThemeOverlay.Kotatsu.Primavera" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Totoro" />
+	<style name="ThemeOverlay.Kotatsu.Totoro" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Asuka" />
+	<style name="ThemeOverlay.Kotatsu.Asuka" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Itsuka" />
+	<style name="ThemeOverlay.Kotatsu.Itsuka" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Kanade" />
+	<style name="ThemeOverlay.Kotatsu.Kanade" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Mamimi" />
+	<style name="ThemeOverlay.Kotatsu.Mamimi" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Miku" />
+	<style name="ThemeOverlay.Kotatsu.Miku" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Mion" />
+	<style name="ThemeOverlay.Kotatsu.Mion" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Rikka" />
+	<style name="ThemeOverlay.Kotatsu.Rikka" parent="Theme.Kotatsu" />
 
-	<style name="ThemeOverlay.Kotatsu.Sakura" />
+	<style name="ThemeOverlay.Kotatsu.Sakura" parent="Theme.Kotatsu" />
 </resources>

@@ -12,10 +12,7 @@ import okhttp3.internal.http2.StreamResetException
 import okio.FileNotFoundException
 import okio.IOException
 import okio.ProtocolException
-import org.acra.ktx.sendSilentlyWithAcra
-import org.acra.ktx.sendWithAcra
 import org.jsoup.HttpStatusException
-import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.exceptions.BadBackupFormatException
 import org.wastaken.kotatsu.api21.core.exceptions.CaughtException
@@ -227,14 +224,7 @@ fun Throwable.isNetworkError(): Boolean {
 		|| this is HttpException && response.code == HttpURLConnection.HTTP_GATEWAY_TIMEOUT
 }
 
-fun Throwable.report(silent: Boolean = false) {
-	val exception = CaughtException(this)
-	if (!silent) {
-		exception.sendWithAcra()
-	} else if (!BuildConfig.DEBUG) {
-		exception.sendSilentlyWithAcra()
-	}
-}
+
 
 fun Throwable.isWebViewUnavailable(): Boolean {
 	val trace = stackTraceToString()

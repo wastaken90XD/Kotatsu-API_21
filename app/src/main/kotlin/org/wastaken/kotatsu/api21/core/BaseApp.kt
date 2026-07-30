@@ -14,15 +14,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import org.acra.ACRA
-import org.acra.ReportField
-import org.acra.config.dialog
-import org.acra.config.httpSender
 import org.acra.data.StringFormat
 import org.acra.ktx.initAcra
-import org.acra.sender.HttpSender
 import org.conscrypt.Conscrypt
 import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
+import org.wastaken.kotatsu.api21.core.crash.CrashReportHandler
 import org.wastaken.kotatsu.api21.core.db.MangaDatabase
 import org.wastaken.kotatsu.api21.core.os.AppValidator
 import org.wastaken.kotatsu.api21.core.os.RomCompat
@@ -82,6 +79,10 @@ open class BaseApp : Application(), Configuration.Provider {
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
+		// If the previous launch crashed, show the report before anything else
+		CrashReportHandler.peekCrashReport(this)?.let { report ->
+			startActivity(CrashReportHandler.launchIntent(this, report))
+		}
 		AppCompatDelegate.setDefaultNightMode(settings.theme)
 		// TLS 1.3 support for Android < 10
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -102,37 +103,17 @@ open class BaseApp : Application(), Configuration.Provider {
 
 	override fun attachBaseContext(base: Context) {
 		super.attachBaseContext(base)
+		CrashReportHandler.install(this)
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
 		initAcra {
 			buildConfigClass = BuildConfig::class.java
 			reportFormat = StringFormat.JSON
-			httpSender {
-				uri = getString(R.string.url_error_report)
-				basicAuthLogin = getString(R.string.acra_login)
-				basicAuthPassword = getString(R.string.acra_password)
-				httpMethod = HttpSender.Method.POST
-			}
-			reportContent = listOf(
-				ReportField.PACKAGE_NAME,
-				ReportField.INSTALLATION_ID,
-				ReportField.APP_VERSION_CODE,
-				ReportField.APP_VERSION_NAME,
-				ReportField.ANDROID_VERSION,
-				ReportField.PHONE_MODEL,
-				ReportField.STACK_TRACE,
-				ReportField.CRASH_CONFIGURATION,
-				ReportField.CUSTOM_DATA,
-			)
-
-			dialog {
-				text = getString(R.string.crash_text)
-				title = getString(R.string.error_occurred)
-				positiveButtonText = getString(R.string.send)
-				resIcon = R.drawable.ic_alert_outline
-				resTheme = android.R.style.Theme_Material_Light_Dialog_Alert
-			}
+			// Personal fork: no crash dialog and no reporting to the
+			// upstream developer's server.  ACRA is kept initialised so
+			// AcraScreenLogger can still attach diagnostics to in-app
+			// error reports.
 		}
 	}
 

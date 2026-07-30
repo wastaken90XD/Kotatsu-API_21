@@ -264,6 +264,10 @@
 	<string name="disable_battery_optimization">Disable battery optimization</string>
 	<string name="disable_battery_optimization_summary">Helps with background updates checks</string>
 	<string name="crash_text">Something went wrong. Please submit a bug report to the developers to help us fix it.</string>
+	<string name="copy">Copy</string>
+	<string name="crash_report_title">Crash report</string>
+	<string name="crash_report_copied">Copied to clipboard</string>
+	<string name="crash_report_share">Share crash report</string>
 	<string name="send">Send</string>
 	<string name="status_planned">Planned</string>
 	<string name="status_reading">Reading</string>
@@ -751,6 +755,7 @@
 	<string name="content_type_image_set">Image set</string>
 	<string name="content_type_artist_cg">Artist CG</string>
 	<string name="content_type_game_cg">Game CG</string>
+	<string name="content_type_booru">Booru</string>
 	<string name="debug">Debug</string>
 	<string name="source_code">Source code</string>
 	<string name="user_manual">User manual</string>

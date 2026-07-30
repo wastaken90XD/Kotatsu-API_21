@@ -33,7 +33,7 @@ material = "1.14.0-alpha03"
 moshi = "1.15.2"
 okhttp = "4.12.0"
 okio = "3.12.0"
-parsers = "927e392e6e"
+parsers = "03ffbe5b50"
 preference = "1.2.1"
 recyclerview = "1.4.0"
 room = "2.7.2"
@@ -49,6 +49,7 @@ workRuntime = "2.10.2"
 workinspector = "1.2"
 
 [libraries]
+acra-core = { module = "ch.acra:acra-core", version.ref = "acra" }
 acra-dialog = { module = "ch.acra:acra-dialog", version.ref = "acra" }
 acra-http = { module = "ch.acra:acra-http", version.ref = "acra" }
 adapterdelegates = { module = "com.hannesdorfmann:adapterdelegates4-kotlin-dsl", version.ref = "adapterdelegates" }

@@ -67,6 +67,7 @@ val ContentType.titleResId
 		ContentType.IMAGE_SET -> R.string.content_type_image_set
 		ContentType.ARTIST_CG -> R.string.content_type_artist_cg
 		ContentType.GAME_CG -> R.string.content_type_game_cg
+		ContentType.BOORU -> R.string.content_type_booru
 	}
 
 tailrec fun MangaSource.unwrap(): MangaSource = if (this is MangaSourceInfo) {
