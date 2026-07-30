@@ -103,7 +103,6 @@ open class BaseApp : Application(), Configuration.Provider {
 
 	override fun attachBaseContext(base: Context) {
 		super.attachBaseContext(base)
-		CrashReportHandler.install(this)
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
