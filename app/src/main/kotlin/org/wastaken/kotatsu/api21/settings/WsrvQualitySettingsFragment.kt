@@ -5,13 +5,11 @@ import android.view.View
 import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.EditTextPreference
 import androidx.preference.SwitchPreferenceCompat
 import dagger.hilt.android.AndroidEntryPoint
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.ui.BasePreferenceFragment
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class WsrvQualitySettingsFragment : BasePreferenceFragment(R.string.wsrv_quality_settings) {
