@@ -9,13 +9,12 @@
 		android:key="wsrv_lossless"
 		android:title="@string/wsrv_lossless" />
 
-	<SeekBarPreference
+	<EditTextPreference
 		android:defaultValue="0"
 		android:key="wsrv_quality"
-		android:max="100"
-		android:min="1"
 		android:title="@string/wsrv_quality"
-		app:showSeekBarValue="true" />
+		android:inputType="number"
+		app:useSimpleSummaryProvider="true" />
 
 	<ListPreference
 		android:defaultValue="original"
@@ -37,12 +36,11 @@
 		android:key="wsrv_never_upscale"
 		android:title="@string/wsrv_never_upscale" />
 
-	<SeekBarPreference
+	<EditTextPreference
 		android:defaultValue="0"
 		android:key="wsrv_sharpen"
-		android:max="10"
-		android:min="0"
 		android:title="@string/wsrv_sharpen"
-		app:showSeekBarValue="true" />
+		android:inputType="number"
+		app:useSimpleSummaryProvider="true" />
 
 </PreferenceScreen>

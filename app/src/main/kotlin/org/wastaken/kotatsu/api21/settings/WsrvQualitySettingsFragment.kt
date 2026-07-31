@@ -2,9 +2,10 @@ package org.wastaken.kotatsu.api21.settings
 
 import android.os.Bundle
 import android.view.View
+import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.SeekBarPreference
+import androidx.preference.EditTextPreference
 import androidx.preference.SwitchPreferenceCompat
 import dagger.hilt.android.AndroidEntryPoint
 import org.wastaken.kotatsu.api21.R
@@ -33,7 +34,7 @@ class WsrvQualitySettingsFragment : BasePreferenceFragment(R.string.wsrv_quality
 
 	private fun updateQualityEnabledState() {
 		val isLossless = settings.wsrvLossless
-		findPreference<SeekBarPreference>(AppSettings.KEY_WSRV_QUALITY)?.isEnabled = !isLossless
+		findPreference<EditTextPreference>(AppSettings.KEY_WSRV_QUALITY)?.isEnabled = !isLossless
 	}
 
 	override fun onPreferenceTreeClick(preference: Preference): Boolean = when (preference.key) {
