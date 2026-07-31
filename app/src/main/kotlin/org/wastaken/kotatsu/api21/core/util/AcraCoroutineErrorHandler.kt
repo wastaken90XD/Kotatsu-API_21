@@ -1,9 +1,9 @@
 package org.wastaken.kotatsu.api21.core.util
 
-import android.util.Log
+import android.content.Context
 import kotlinx.coroutines.CoroutineExceptionHandler
+import org.wastaken.kotatsu.api21.core.crash.CrashReportHandler
 import org.wastaken.kotatsu.api21.core.util.ext.printStackTraceDebug
-import org.koitharu.kotatsu.parsers.exception.toCrashReport
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
@@ -12,6 +12,19 @@ class AcraCoroutineErrorHandler : AbstractCoroutineContextElement(CoroutineExcep
 
 	override fun handleException(context: CoroutineContext, exception: Throwable) {
 		exception.printStackTraceDebug()
-		Log.e("CoroutineError", exception.toCrashReport())
+		try {
+			val app = try {
+				Class.forName("android.app.ActivityThread")
+					.getMethod("currentApplication")
+					.invoke(null) as? android.app.Application
+			} catch (_: Throwable) {
+				null
+			}
+			val ctx = app?.applicationContext ?: return
+			val report = CrashReportHandler.buildReport(Thread.currentThread(), exception)
+			CrashReportHandler.crashFile(ctx).writeText(report)
+		} catch (_: Throwable) {
+			// Last-resort: if writing fails, still don't crash the process.
+		}
 	}
 }

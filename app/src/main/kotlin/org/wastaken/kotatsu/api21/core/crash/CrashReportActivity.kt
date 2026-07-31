@@ -25,6 +25,7 @@ class CrashReportActivity : BaseActivity<ActivityCrashReportBinding>() {
 		}
 
 		viewBinding.toolbar.title = getString(R.string.crash_report_title)
+		setDisplayHomeAsUp(true, true)
 		viewBinding.toolbar.setNavigationOnClickListener { finish() }
 		viewBinding.textViewReport.text = report
 
@@ -33,6 +34,9 @@ class CrashReportActivity : BaseActivity<ActivityCrashReportBinding>() {
 		}
 		viewBinding.buttonShare.setOnClickListener {
 			shareReport(report)
+		}
+		viewBinding.buttonClose.setOnClickListener {
+			finish()
 		}
 	}
 

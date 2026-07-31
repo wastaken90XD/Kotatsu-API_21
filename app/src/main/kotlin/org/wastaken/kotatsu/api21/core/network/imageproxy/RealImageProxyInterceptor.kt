@@ -35,7 +35,7 @@ class RealImageProxyInterceptor @Inject constructor(
 
 	private fun createDelegate(): ImageProxyInterceptor? = when (val proxy = settings.imagesProxy) {
 		-1 -> null
-		0 -> WsrvNlProxyInterceptor()
+		0 -> WsrvNlProxyInterceptor(settings),
 		1 -> ZeroMsProxyInterceptor()
 		else -> error("Unsupported images proxy $proxy")
 	}

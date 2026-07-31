@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.Process
 import org.wastaken.kotatsu.api21.BuildConfig
-import org.koitharu.kotatsu.parsers.exception.toCrashReport
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -30,18 +29,6 @@ class CrashReportHandler private constructor(
 			?: Process.killProcess(Process.myPid()).also { exitProcess(1) }
 	}
 
-	private fun buildReport(thread: Thread, throwable: Throwable): String = buildString {
-		append("Thread: ").append(thread.name).append('\n')
-		append("App: ").append(BuildConfig.APPLICATION_ID)
-		append(" v").append(BuildConfig.VERSION_NAME)
-		append(" (").append(BuildConfig.BUILD_TYPE).append(")\n")
-		append("Android: ").append(Build.VERSION.RELEASE)
-		append(" (API ").append(Build.VERSION.SDK_INT).append(")\n")
-		append("Device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
-		append('\n')
-		append(throwable.toCrashReport())
-	}
-
 	companion object {
 
 		private const val FILE_NAME = "crash_report.txt"
@@ -64,11 +51,23 @@ class CrashReportHandler private constructor(
 
 		fun launchIntent(context: Context, report: String): Intent {
 			return Intent(context, CrashReportActivity::class.java).apply {
-				addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+				addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 				putExtra(CrashReportActivity.EXTRA_REPORT, report)
 			}
 		}
 
-		private fun crashFile(context: Context) = File(context.filesDir, FILE_NAME)
+		fun crashFile(context: Context) = File(context.filesDir, FILE_NAME)
+
+		fun buildReport(thread: Thread, throwable: Throwable): String = buildString {
+			append("Thread: ").append(thread.name).append('\n')
+			append("App: ").append(BuildConfig.APPLICATION_ID)
+			append(" v").append(BuildConfig.VERSION_NAME)
+			append(" (").append(BuildConfig.BUILD_TYPE).append(")\n")
+			append("Android: ").append(Build.VERSION.RELEASE)
+			append(" (API ").append(Build.VERSION.SDK_INT).append(")\n")
+			append("Device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
+			append('\n')
+			append(throwable.stackTraceToString())
+		}
 	}
 }

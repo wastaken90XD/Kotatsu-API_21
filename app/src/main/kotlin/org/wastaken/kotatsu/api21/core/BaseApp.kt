@@ -76,6 +76,7 @@ open class BaseApp : Application(), Configuration.Provider {
 
 	override fun onCreate() {
 		super.onCreate()
+		CrashReportHandler.install(this)
 		if (ACRA.isACRASenderServiceProcess()) {
 			return
 		}
