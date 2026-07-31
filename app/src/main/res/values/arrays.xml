@@ -146,18 +146,54 @@
 		<item>@string/ask_every_time</item>
 		<item>@string/disable</item>
 	</string-array>
-<string-array name="wsrv_formats">
-	<item>@string/wsrv_original</item>
-	<item>@string/wsrv_jpg</item>
-	<item>@string/wsrv_png</item>
-	<item>@string/wsrv_webp</item>
-	<item>@string/wsrv_avif</item>
+<string-array name="wsrv_formats" translatable="false">
+	<item>Original</item>
+	<item>JPEG</item>
+	<item>PNG</item>
+	<item>WebP</item>
+	<item>AVIF</item>
+	<item>GIF</item>
+	<item>TIFF</item>
 </string-array>
-<string-array name="values_wsrv_formats">
+<string-array name="values_wsrv_formats" translatable="false">
 	<item>original</item>
 	<item>jpg</item>
 	<item>png</item>
 	<item>webp</item>
 	<item>avif</item>
+	<item>gif</item>
+	<item>tiff</item>
+</string-array>
+<string-array name="wsrv_fits" translatable="false">
+	<item>Cover</item>
+	<item>Contain</item>
+	<item>Fill</item>
+	<item>Inside</item>
+	<item>Outside</item>
+</string-array>
+<string-array name="values_wsrv_fits" translatable="false">
+	<item>cover</item>
+	<item>contain</item>
+	<item>fill</item>
+	<item>inside</item>
+	<item>outside</item>
+</string-array>
+<string-array name="wsrv_alignments" translatable="false">
+	<item>Center</item>
+	<item>Top</item>
+	<item>Bottom</item>
+	<item>Left</item>
+	<item>Right</item>
+	<item>Entropy</item>
+	<item>Attention</item>
+</string-array>
+<string-array name="values_wsrv_alignments" translatable="false">
+	<item>center</item>
+	<item>top</item>
+	<item>bottom</item>
+	<item>left</item>
+	<item>right</item>
+	<item>entropy</item>
+	<item>attention</item>
 </string-array>
 </resources>

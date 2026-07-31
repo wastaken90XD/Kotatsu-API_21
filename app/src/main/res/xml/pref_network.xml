@@ -48,6 +48,11 @@
 		android:title="@string/images_proxy_title"
 		app:useSimpleSummaryProvider="true" />
 
+	<PreferenceScreen
+		android:fragment="org.wastaken.kotatsu.api21.settings.WsrvQualitySettingsFragment"
+		android:key="wsrv_quality"
+		android:title="@string/wsrv_quality_settings" />
+
 	<SwitchPreferenceCompat
 		android:defaultValue="false"
 		android:key="mirror_switching"

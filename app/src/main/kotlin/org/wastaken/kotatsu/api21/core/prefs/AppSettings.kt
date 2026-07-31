@@ -464,10 +464,38 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		get() = prefs.getString(KEY_WSRV_FORMAT, null) ?: "original"
 	val wsrvMaxWidth: Int
 		get() = prefs.getString(KEY_WSRV_MAX_WIDTH, null)?.toIntOrNull() ?: 0
+	val wsrvMaxHeight: Int
+		get() = prefs.getString(KEY_WSRV_MAX_HEIGHT, null)?.toIntOrNull() ?: 0
+	val wsrvDpr: Float
+		get() = prefs.getString(KEY_WSRV_DPR, null)?.toFloatOrNull() ?: 0f
 	val wsrvNeverUpscale: Boolean
 		get() = prefs.getBoolean(KEY_WSRV_NEVER_UPSCALE, false)
+	val wsrvFit: String
+		get() = prefs.getString(KEY_WSRV_FIT, null) ?: "cover"
+	val wsrvAlignment: String
+		get() = prefs.getString(KEY_WSRV_ALIGNMENT, null) ?: "center"
 	val wsrvSharpen: Int
 		get() = prefs.getString(KEY_WSRV_SHARPEN, null)?.toIntOrNull() ?: 0
+	val wsrvBlur: Float
+		get() = prefs.getString(KEY_WSRV_BLUR, null)?.toFloatOrNull() ?: 0f
+	val wsrvContrast: Int
+		get() = prefs.getString(KEY_WSRV_CONTRAST, null)?.toIntOrNull() ?: 0
+	val wsrvSaturation: Int
+		get() = prefs.getString(KEY_WSRV_SATURATION, null)?.toIntOrNull() ?: 0
+	val wsrvGamma: Float
+		get() = prefs.getString(KEY_WSRV_GAMMA, null)?.toFloatOrNull() ?: 0f
+	val wsrvHue: Int
+		get() = prefs.getString(KEY_WSRV_HUE, null)?.toIntOrNull() ?: 0
+	val wsrvBrightness: Float
+		get() = prefs.getString(KEY_WSRV_BRIGHTNESS, null)?.toFloatOrNull() ?: 0f
+	val wsrvTint: String
+		get() = prefs.getString(KEY_WSRV_TINT, null) ?: ""
+	val wsrvProgressive: Boolean
+		get() = prefs.getBoolean(KEY_WSRV_PROGRESSIVE, false)
+	val wsrvPngLevel: Int
+		get() = prefs.getString(KEY_WSRV_PNG_LEVEL, null)?.toIntOrNull() ?: 0
+	val wsrvPngFilter: Boolean
+		get() = prefs.getBoolean(KEY_WSRV_PNG_FILTER, false)
 	val wsrvLossless: Boolean
 		get() = prefs.getBoolean(KEY_WSRV_LOSSLESS, false)
 
@@ -786,8 +814,22 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_WSRV_QUALITY = "wsrv_quality"
 		const val KEY_WSRV_FORMAT = "wsrv_format"
 		const val KEY_WSRV_MAX_WIDTH = "wsrv_max_width"
+		const val KEY_WSRV_MAX_HEIGHT = "wsrv_max_height"
+		const val KEY_WSRV_DPR = "wsrv_dpr"
 		const val KEY_WSRV_NEVER_UPSCALE = "wsrv_never_upscale"
+		const val KEY_WSRV_FIT = "wsrv_fit"
+		const val KEY_WSRV_ALIGNMENT = "wsrv_alignment"
 		const val KEY_WSRV_SHARPEN = "wsrv_sharpen"
+		const val KEY_WSRV_BLUR = "wsrv_blur"
+		const val KEY_WSRV_CONTRAST = "wsrv_contrast"
+		const val KEY_WSRV_SATURATION = "wsrv_saturation"
+		const val KEY_WSRV_GAMMA = "wsrv_gamma"
+		const val KEY_WSRV_HUE = "wsrv_hue"
+		const val KEY_WSRV_BRIGHTNESS = "wsrv_brightness"
+		const val KEY_WSRV_TINT = "wsrv_tint"
+		const val KEY_WSRV_PROGRESSIVE = "wsrv_progressive"
+		const val KEY_WSRV_PNG_LEVEL = "wsrv_png_level"
+		const val KEY_WSRV_PNG_FILTER = "wsrv_png_filter"
 		const val KEY_WSRV_LOSSLESS = "wsrv_lossless"
 		const val KEY_LOCAL_MANGA_DIRS = "local_manga_dirs"
 		const val KEY_DISABLE_NSFW = "no_nsfw"
