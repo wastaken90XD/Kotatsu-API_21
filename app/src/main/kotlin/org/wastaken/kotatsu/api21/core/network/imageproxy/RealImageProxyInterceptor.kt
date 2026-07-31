@@ -38,5 +38,6 @@ class RealImageProxyInterceptor @Inject constructor(
 		0 -> WsrvNlProxyInterceptor(settings),
 		1 -> ZeroMsProxyInterceptor()
 		else -> error("Unsupported images proxy $proxy")
+		}
 	}
 }

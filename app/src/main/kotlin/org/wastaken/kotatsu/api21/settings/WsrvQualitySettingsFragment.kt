@@ -16,9 +16,6 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class WsrvQualitySettingsFragment : BasePreferenceFragment(R.string.wsrv_quality_settings) {
 
-	@Inject
-	lateinit var settings: AppSettings
-
 	override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
 		addPreferencesFromResource(R.xml.pref_wsrv_quality)
 		updateQualityEnabledState()
