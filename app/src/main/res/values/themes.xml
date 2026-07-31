@@ -154,7 +154,7 @@
 	</style>
 
 	<!-- Changes only for night -->
-	<style name="ThemeOverlay.Kotatsu.Amoled" parent="" />
+	<style name="ThemeOverlay.Kotatsu.Amoled" parent="Theme.Kotatsu" />
 
 	<!-- App Widgets -->
 

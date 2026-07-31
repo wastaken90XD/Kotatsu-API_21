@@ -33,9 +33,9 @@ class SnackbarErrorObserver(
 			snackbar.setAction(ExceptionResolver.getResolveStringId(value)) {
 				resolve(value)
 			}
-		} else if (value is ParseException) {
+		} else if (value.isSerializable()) {
 			val router = router()
-			if (router != null && value.isSerializable()) {
+			if (router != null) {
 				snackbar.setAction(R.string.details) {
 					router.showErrorDialog(value)
 				}

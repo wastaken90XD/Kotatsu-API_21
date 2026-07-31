@@ -126,8 +126,6 @@ abstract class BaseActivity<B : ViewBinding> :
 			if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
 				ActivityCompat.recreate(this)
 				return true
-			} else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-				throw RuntimeException("Test crash")
 			}
 		}
 		return super.onKeyDown(keyCode, event)

@@ -56,6 +56,13 @@
 			android:layout_height="wrap_content"
 			android:text="@string/share" />
 
+		<Button
+			android:id="@+id/button_close"
+			style="?materialButtonOutlinedStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/close" />
+
 	</LinearLayout>
 
 </LinearLayout>

@@ -1,13 +1,11 @@
 package org.wastaken.kotatsu.api21.settings.about
 
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.annotation.StringRes
 import androidx.fragment.app.viewModels
 import androidx.preference.Preference
-import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,11 +18,8 @@ import org.wastaken.kotatsu.api21.core.github.isStable
 import org.wastaken.kotatsu.api21.core.nav.router
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.ui.BasePreferenceFragment
-import org.wastaken.kotatsu.api21.core.util.ext.getThemeColor
 import org.wastaken.kotatsu.api21.core.util.ext.observe
 import org.wastaken.kotatsu.api21.core.util.ext.observeEvent
-import com.google.android.material.R as materialR
-import androidx.appcompat.R as appcompatR
 
 @AndroidEntryPoint
 class AboutSettingsFragment : BasePreferenceFragment(R.string.about) {
@@ -40,40 +35,7 @@ class AboutSettingsFragment : BasePreferenceFragment(R.string.about) {
 			isEnabled = VersionId(BuildConfig.VERSION_NAME).isStable
 			if (!isEnabled) isChecked = true
 		}
-		if (BuildConfig.DEBUG) {
-			addThemeDiagnostics()
-		}
 	}
-
-	/**
-	 * Temporary theme diagnostics (debug builds only): shows the raw stored
-	 * color scheme, the effectively applied one, and the colors actually
-	 * resolved by the activity theme, to debug device-specific theming issues.
-	 */
-	private fun addThemeDiagnostics() {
-		val activity = activity ?: return
-		val rawName = PreferenceManager.getDefaultSharedPreferences(activity)
-			.getString(AppSettings.KEY_COLOR_THEME, null) ?: "<unset>"
-		val effective = settings.colorScheme
-		val primary = activity.getThemeColor(appcompatR.attr.colorPrimary, 0)
-		val surface = activity.getThemeColor(materialR.attr.colorSurface, 0)
-		val background = activity.getThemeColor(android.R.attr.colorBackground, 0)
-		val pref = Preference(preferenceScreen.context)
-		pref.title = "Theme diagnostics"
-		pref.summary = buildString {
-			append("sdk=").append(Build.VERSION.SDK_INT)
-			append(", raw=").append(rawName)
-			append(", effective=").append(effective.name)
-			append("\nprimary=").append(hex(primary))
-			append(", surface=").append(hex(surface))
-			append(", background=").append(hex(background))
-		}
-		pref.isSelectable = false
-		pref.isPersistent = false
-		preferenceScreen.addPreference(pref)
-	}
-
-	private fun hex(color: Int): String = String.format("#%06X", color and 0xFFFFFF)
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
