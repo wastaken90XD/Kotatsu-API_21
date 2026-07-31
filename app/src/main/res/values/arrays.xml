@@ -146,18 +146,4 @@
 		<item>@string/ask_every_time</item>
 		<item>@string/disable</item>
 	</string-array>
-<string-array name="wsrv_formats">
-	<item>@string/wsrv_original</item>
-	<item>@string/wsrv_jpg</item>
-	<item>@string/wsrv_png</item>
-	<item>@string/wsrv_webp</item>
-	<item>@string/wsrv_avif</item>
-</string-array>
-<string-array name="values_wsrv_formats">
-	<item>original</item>
-	<item>jpg</item>
-	<item>png</item>
-	<item>webp</item>
-	<item>avif</item>
-</string-array>
 </resources>

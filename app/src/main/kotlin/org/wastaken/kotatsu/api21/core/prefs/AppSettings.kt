@@ -457,20 +457,6 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	val proxyPort: Int
 		get() = prefs.getString(KEY_PROXY_PORT, null)?.toIntOrNull() ?: 0
 
-	// Experimental wsrv.nl image quality (revertable)
-	val wsrvQuality: Int
-		get() = prefs.getString(KEY_WSRV_QUALITY, null)?.toIntOrNull() ?: 0
-	val wsrvFormat: String
-		get() = prefs.getString(KEY_WSRV_FORMAT, null) ?: "original"
-	val wsrvMaxWidth: Int
-		get() = prefs.getString(KEY_WSRV_MAX_WIDTH, null)?.toIntOrNull() ?: 0
-	val wsrvNeverUpscale: Boolean
-		get() = prefs.getBoolean(KEY_WSRV_NEVER_UPSCALE, false)
-	val wsrvSharpen: Int
-		get() = prefs.getString(KEY_WSRV_SHARPEN, null)?.toIntOrNull() ?: 0
-	val wsrvLossless: Boolean
-		get() = prefs.getBoolean(KEY_WSRV_LOSSLESS, false)
-
 	val proxyLogin: String?
 		get() = prefs.getString(KEY_PROXY_LOGIN, null)?.nullIfEmpty()
 
@@ -781,14 +767,6 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_PROXY_PASSWORD = "proxy_password"
 		const val KEY_PROXY_SECRET = "proxy_secret"
 		const val KEY_IMAGES_PROXY = "images_proxy_2"
-
-		// Experimental wsrv.nl quality settings (revertable)
-		const val KEY_WSRV_QUALITY = "wsrv_quality"
-		const val KEY_WSRV_FORMAT = "wsrv_format"
-		const val KEY_WSRV_MAX_WIDTH = "wsrv_max_width"
-		const val KEY_WSRV_NEVER_UPSCALE = "wsrv_never_upscale"
-		const val KEY_WSRV_SHARPEN = "wsrv_sharpen"
-		const val KEY_WSRV_LOSSLESS = "wsrv_lossless"
 		const val KEY_LOCAL_MANGA_DIRS = "local_manga_dirs"
 		const val KEY_DISABLE_NSFW = "no_nsfw"
 		const val KEY_RELATED_MANGA = "related_manga"
