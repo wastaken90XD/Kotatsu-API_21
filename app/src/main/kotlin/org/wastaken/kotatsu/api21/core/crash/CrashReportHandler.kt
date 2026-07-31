@@ -20,8 +20,8 @@ class CrashReportHandler private constructor(
 
 	override fun uncaughtException(thread: Thread, throwable: Throwable) {
 		try {
-			val report = buildReport(thread, throwable)
-			crashFile(appContext).writeText(report)
+			val report = CrashReportHandler.buildReport(thread, throwable)
+		CrashReportHandler.crashFile(appContext).writeText(report)
 		} catch (_: Throwable) {
 			// Last-resort: if even writing the report fails, still die.
 		}

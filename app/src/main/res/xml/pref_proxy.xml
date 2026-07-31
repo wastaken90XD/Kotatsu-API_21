@@ -48,7 +48,7 @@
 		android:title="@string/test_connection"
 		app:allowDividerAbove="true" />
 
-	<!-- TEMP DISABLE WS <PreferenceScreen
+	<PreferenceScreen
 		android:fragment="org.wastaken.kotatsu.api21.settings.WsrvQualitySettingsFragment"
 		android:key="wsrv_quality"
 		android:title="@string/wsrv_quality_settings"
