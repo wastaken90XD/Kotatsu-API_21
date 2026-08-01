@@ -11,4 +11,11 @@ interface CloudFlareCallback : BrowserCallback {
 	fun onCheckPassed()
 
 	fun onLoopDetected()
+
+	/**
+	 * Called when the challenge could not be solved after several full
+	 * attempts. Implementers should surface this to the user and stop
+	 * auto-reloading instead of looping indefinitely.
+	 */
+	fun onCheckFailed() = Unit
 }

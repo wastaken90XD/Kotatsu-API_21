@@ -8,6 +8,7 @@ import org.wastaken.kotatsu.api21.core.network.webview.adblock.AdBlock
 import org.koitharu.kotatsu.parsers.network.CloudFlareHelper
 
 private const val LOOP_COUNTER = 3
+private const val MAX_ATTEMPTS = 3
 
 class CloudFlareClient(
 	private val cookieJar: MutableCookieJar,
@@ -18,6 +19,7 @@ class CloudFlareClient(
 
 	private val oldClearance = getClearance()
 	private var counter = 0
+	private var attemptCount = 0
 
 	override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
 		super.onPageStarted(view, url, favicon)
@@ -41,11 +43,21 @@ class CloudFlareClient(
 	private fun checkClearance() {
 		val clearance = getClearance()
 		if (clearance != null && clearance != oldClearance) {
+			attemptCount = 0
 			callback.onCheckPassed()
-		} else {
-			counter++
-			if (counter >= LOOP_COUNTER) {
-				reset()
+			return
+		}
+		// A single page can trigger several page-starts (e.g. Cloudflare's
+		// redirect to /cdn-cgi/... and back), so we only count a full loop
+		// once a challenge page has fully cycled without a clearance cookie.
+		counter++
+		if (counter >= LOOP_COUNTER) {
+			counter = 0
+			attemptCount++
+			if (attemptCount >= MAX_ATTEMPTS) {
+				attemptCount = 0
+				callback.onCheckFailed()
+			} else {
 				callback.onLoopDetected()
 			}
 		}

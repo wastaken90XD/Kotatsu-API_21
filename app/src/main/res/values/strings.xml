@@ -218,6 +218,7 @@
 	<string name="silent">Silent</string>
 	<string name="captcha_required">CAPTCHA required</string>
 	<string name="captcha_solve">Solve</string>
+	<string name="cloudflare_verification_failed">Cloudflare verification could not be completed. Check your connection and try again.</string>
 	<string name="clear_cookies">Clear cookies</string>
 	<string name="cookies_cleared">All cookies were removed</string>
 	<string name="clear_feed">Clear feed</string>

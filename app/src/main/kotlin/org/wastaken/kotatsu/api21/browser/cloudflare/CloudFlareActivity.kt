@@ -94,7 +94,8 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 		}
 
 		R.id.action_retry -> {
-			restartCheck()
+			// Manual retry clears the cached CF cookies to start fresh.
+			reloadCheck(clearCookies = true)
 			true
 		}
 
@@ -113,7 +114,22 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 	}
 
 	override fun onLoopDetected() {
-		restartCheck()
+		// An intermediate failure: reload WITHOUT clearing the cached CF
+		// cookies, since the token may still be valid once the challenge
+		// actually completes.
+		reloadCheck(clearCookies = false)
+	}
+
+	override fun onCheckFailed() {
+		// The challenge could not be solved after several attempts (e.g. an
+		// IP/ASN block or strict bot detection). Stop auto-reloading and
+		// tell the user instead of looping forever.
+		viewBinding.webView.stopLoading()
+		Snackbar.make(
+			viewBinding.webView,
+			R.string.cloudflare_verification_failed,
+			Snackbar.LENGTH_LONG,
+		).show()
 	}
 
 	override fun onCheckPassed() {
@@ -144,14 +160,16 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 		supportActionBar?.subtitle = subtitle?.toString()?.toHttpUrlOrNull()?.host.ifNullOrEmpty { subtitle }
 	}
 
-	private fun restartCheck() {
+	private fun reloadCheck(clearCookies: Boolean) {
 		lifecycleScope.launch {
 			viewBinding.webView.stopLoading()
 			yield()
 			cfClient.reset()
 			val targetUrl = intent?.dataString?.toHttpUrlOrNull()
 			if (targetUrl != null) {
-				clearCfCookies(targetUrl)
+				if (clearCookies) {
+					clearCfCookies(targetUrl)
+				}
 				viewBinding.webView.loadUrl(targetUrl.toString())
 			}
 		}
