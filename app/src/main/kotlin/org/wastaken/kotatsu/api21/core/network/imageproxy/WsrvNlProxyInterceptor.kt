@@ -16,10 +16,11 @@ class WsrvNlProxyInterceptor @Inject constructor(
 		android.util.Log.d("WSRV_DEBUG", "WsrvNlProxyInterceptor.buildUrl() called. Input URL: $url")
 		val strippedUrl = url.substringBefore("?").replaceFirst(Regex("^https?://"), "")
 		android.util.Log.d("WSRV_DEBUG", "Stripped URL: $strippedUrl")
+		val targetUrl = buildWorkerRelayUrl(strippedUrl)
 		val newUrl = HttpUrl.Builder()
 			.scheme("https")
 			.host("wsrv.nl")
-			.addQueryParameter("url", strippedUrl)
+			.addQueryParameter("url", targetUrl)
 
 		if (settings.wsrvLossless) {
 			newUrl.addQueryParameter("ll", null)
@@ -100,6 +101,26 @@ class WsrvNlProxyInterceptor @Inject constructor(
 		val builtUrl = newUrl.build()
 		android.util.Log.d("WSRV_DEBUG", "Final Built WSRV URL: $builtUrl")
 		return builtUrl
+	}
+
+	/**
+	 * Wraps the stripped source URL through the optional Cloudflare Worker relay before it is
+	 * handed to wsrv.nl. Disabled by default; if the relay is off, the URL is empty or does not
+	 * start with [https://], the original stripped URL is returned unchanged (existing behaviour).
+	 */
+	private fun buildWorkerRelayUrl(strippedUrl: String): String {
+		if (!settings.wsrvWorkerEnabled) {
+			return strippedUrl
+		}
+		val workerUrl = settings.wsrvWorkerUrl.trim().trimEnd('/')
+		if (workerUrl.isEmpty() || !workerUrl.startsWith("https://")) {
+			android.util.Log.d("WSRV_DEBUG", "Worker relay enabled but URL missing/invalid, falling back to direct source")
+			return strippedUrl
+		}
+		val param = settings.wsrvWorkerQueryParam
+		val relayUrl = "$workerUrl/?$param=$strippedUrl"
+		android.util.Log.d("WSRV_DEBUG", "Worker relay wrapping source URL: $relayUrl")
+		return relayUrl
 	}
 
 	override suspend fun onInterceptImageRequest(request: ImageRequest, url: HttpUrl): ImageRequest {

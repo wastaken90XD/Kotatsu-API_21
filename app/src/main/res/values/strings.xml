@@ -64,6 +64,15 @@
 	<string name="wsrv_brightness_summary" translatable="false">Brightness multiplier. 1.0 = no change.</string>
 	<string name="wsrv_tint" translatable="false">Tint</string>
 	<string name="wsrv_tint_summary" translatable="false">Apply a colour tint. Enter a hex colour value.</string>
+
+	<string name="wsrv_cat_worker" translatable="false">Cloudflare Worker relay</string>
+	<string name="wsrv_worker_relay" translatable="false">Cloudflare Worker relay</string>
+	<string name="wsrv_worker_relay_summary" translatable="false">Route image requests through a Cloudflare Worker before wsrv.nl. Useful when source domains are blocked by wsrv.nl policy.</string>
+	<string name="wsrv_worker_url" translatable="false">Worker URL</string>
+	<string name="wsrv_worker_url_summary" translatable="false">Your deployed Cloudflare Worker endpoint.</string>
+	<string name="wsrv_worker_url_hint" translatable="false">https://your-worker.workers.dev</string>
+	<string name="wsrv_worker_query_param" translatable="false">Worker query parameter</string>
+	<string name="wsrv_worker_query_param_summary" translatable="false">Query parameter used to pass the original image URL to the Worker. Defaults to url.</string>
 	<string name="try_again">Try again</string>
 	<!-- Should be short -->
 	<string name="retry">Retry</string>
@@ -209,6 +218,7 @@
 	<string name="silent">Silent</string>
 	<string name="captcha_required">CAPTCHA required</string>
 	<string name="captcha_solve">Solve</string>
+	<string name="cloudflare_verification_failed">Cloudflare verification could not be completed. Check your connection and try again.</string>
 	<string name="clear_cookies">Clear cookies</string>
 	<string name="cookies_cleared">All cookies were removed</string>
 	<string name="clear_feed">Clear feed</string>

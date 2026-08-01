@@ -43,6 +43,9 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 	@Inject
 	lateinit var captchaHandler: CaptchaHandler
 
+	@Inject
+	lateinit var cloudFlareVerifier: CloudFlareVerifier
+
 	private lateinit var cfClient: CloudFlareClient
 
 	override fun onCreate2(savedInstanceState: Bundle?, source: MangaSource, repository: ParserMangaRepository?) {
@@ -52,7 +55,18 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 			finishAfterTransition()
 			return
 		}
-		cfClient = CloudFlareClient(cookieJar, this, adBlock, url)
+		// Reuse the last User-Agent that successfully passed a challenge for
+		// this host, so the cached cf_clearance token stays valid. This also
+		// keeps the solving UA stable across attempts.
+		url.toHttpUrlOrNull()?.host?.let { host ->
+			cloudFlareVerifier.getSolvedUserAgent(host)?.let { solvedUa ->
+				viewBinding.webView.settings.userAgentString = solvedUa
+			}
+		}
+		// The challenge page must render unmodified: any ad-blocking that
+		// alters the DOM or blocks scripts breaks Cloudflare's challenge JS
+		// and causes the verification loop. So the solver runs without it.
+		cfClient = CloudFlareClient(cookieJar, this, adBlock = null, targetUrl = url)
 		viewBinding.webView.webViewClient = cfClient
 		lifecycleScope.launch {
 			try {
@@ -80,7 +94,8 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 		}
 
 		R.id.action_retry -> {
-			restartCheck()
+			// Manual retry clears the cached CF cookies to start fresh.
+			reloadCheck(clearCookies = true)
 			true
 		}
 
@@ -99,11 +114,34 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 	}
 
 	override fun onLoopDetected() {
-		restartCheck()
+		// An intermediate failure: reload WITHOUT clearing the cached CF
+		// cookies, since the token may still be valid once the challenge
+		// actually completes.
+		reloadCheck(clearCookies = false)
+	}
+
+	override fun onCheckFailed() {
+		// The challenge could not be solved after several attempts (e.g. an
+		// IP/ASN block or strict bot detection). Stop auto-reloading and
+		// tell the user instead of looping forever.
+		viewBinding.webView.stopLoading()
+		Snackbar.make(
+			viewBinding.webView,
+			R.string.cloudflare_verification_failed,
+			Snackbar.LENGTH_LONG,
+		).show()
 	}
 
 	override fun onCheckPassed() {
 		pendingResult = RESULT_OK
+		// Persist the exact UA that passed the challenge for this host, so the
+		// cf_clearance token in the cookie jar stays valid for the OkHttp
+		// fetches and for future verification attempts.
+		runCatching {
+			intent?.dataString?.toHttpUrlOrNull()?.host?.let { host ->
+				cloudFlareVerifier.rememberSolvedUserAgent(host, viewBinding.webView.settings.userAgentString)
+			}
+		}
 		lifecycleScope.launch {
 			val source = intent?.getStringExtra(AppRouter.KEY_SOURCE)
 			if (source != null) {
@@ -122,14 +160,16 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 		supportActionBar?.subtitle = subtitle?.toString()?.toHttpUrlOrNull()?.host.ifNullOrEmpty { subtitle }
 	}
 
-	private fun restartCheck() {
+	private fun reloadCheck(clearCookies: Boolean) {
 		lifecycleScope.launch {
 			viewBinding.webView.stopLoading()
 			yield()
 			cfClient.reset()
 			val targetUrl = intent?.dataString?.toHttpUrlOrNull()
 			if (targetUrl != null) {
-				clearCfCookies(targetUrl)
+				if (clearCookies) {
+					clearCfCookies(targetUrl)
+				}
 				viewBinding.webView.loadUrl(targetUrl.toString())
 			}
 		}
