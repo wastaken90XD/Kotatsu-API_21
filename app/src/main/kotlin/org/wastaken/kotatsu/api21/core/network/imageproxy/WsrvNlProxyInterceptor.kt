@@ -13,7 +13,9 @@ class WsrvNlProxyInterceptor @Inject constructor(
 ) : BaseImageProxyInterceptor() {
 
 	fun buildUrl(url: String, includeCoilSize: Boolean = false, coilW: Int = 0, coilH: Int = 0): HttpUrl {
+		android.util.Log.d("WSRV_DEBUG", "WsrvNlProxyInterceptor.buildUrl() called. Input URL: $url")
 		val strippedUrl = url.replaceFirst(Regex("^https?://"), "")
+		android.util.Log.d("WSRV_DEBUG", "Stripped URL: $strippedUrl")
 		val newUrl = HttpUrl.Builder()
 			.scheme("https")
 			.host("wsrv.nl")
@@ -95,7 +97,9 @@ class WsrvNlProxyInterceptor @Inject constructor(
 			if (maxH <= 0 && coilH > 0) newUrl.addQueryParameter("h", coilH.toString())
 		}
 
-		return newUrl.build()
+		val builtUrl = newUrl.build()
+		android.util.Log.d("WSRV_DEBUG", "Final Built WSRV URL: $builtUrl")
+		return builtUrl
 	}
 
 	override suspend fun onInterceptImageRequest(request: ImageRequest, url: HttpUrl): ImageRequest {

@@ -41,6 +41,7 @@ abstract class BaseImageProxyInterceptor : ImageProxyInterceptor {
 		return when (val result = chain.withRequest(newRequest).proceed()) {
 			is SuccessResult -> result
 			is ErrorResult -> {
+				Log.e("WSRV_DEBUG", "BaseImageProxyInterceptor error during coil intercept: ${result.throwable.message}", result.throwable)
 				logDebug(result.throwable, newRequest.data)
 				chain.proceed().also {
 					if (it is SuccessResult && result.throwable.isBlockedByServer()) {
@@ -56,6 +57,7 @@ abstract class BaseImageProxyInterceptor : ImageProxyInterceptor {
 		return runCatchingCancellable {
 			okHttp.doCall(newRequest)
 		}.recover { error ->
+			Log.e("WSRV_DEBUG", "BaseImageProxyInterceptor error during page intercept: ${error.message}", error)
 			logDebug(error, newRequest.url)
 			okHttp.doCall(request).also {
 				if (error.isBlockedByServer()) {

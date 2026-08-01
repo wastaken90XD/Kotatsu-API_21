@@ -18,6 +18,11 @@ class DebugSettingsFragment : BasePreferenceFragment(R.string.debug) {
 			true
 		}
 
+		"logcat" -> {
+			startActivity(android.content.Intent(preference.context, LogcatActivity::class.java))
+			true
+		}
+
 		else -> super.onPreferenceTreeClick(preference)
 	}
 

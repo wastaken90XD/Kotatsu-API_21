@@ -26,6 +26,7 @@ class RealImageProxyInterceptor @Inject constructor(
 	)
 
 	override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+		android.util.Log.d("WSRV_DEBUG", "RealImageProxyInterceptor.intercept() called for URL: ${chain.request.data}. Current proxy setting: ${settings.imagesProxy}")
 		return delegate.value?.intercept(chain) ?: chain.proceed()
 	}
 
