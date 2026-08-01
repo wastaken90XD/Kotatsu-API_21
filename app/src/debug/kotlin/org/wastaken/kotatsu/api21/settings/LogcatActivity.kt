@@ -6,17 +6,20 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
-import com.google.android.material.snackbar.Snackbar
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.ui.BaseActivity
 import org.wastaken.kotatsu.api21.core.util.ext.consumeAllSystemBarsInsets
 import org.wastaken.kotatsu.api21.core.util.ext.systemBarsInsets
 import org.wastaken.kotatsu.api21.databinding.ActivityCrashReportBinding
-import org.wastaken.kotatsu.api21.core.util.ext.lifecycleScope
 
 class LogcatActivity : BaseActivity<ActivityCrashReportBinding>() {
 
@@ -30,32 +33,34 @@ class LogcatActivity : BaseActivity<ActivityCrashReportBinding>() {
 		viewBinding.buttonClose.setOnClickListener { finish() }
 		viewBinding.buttonClose.visibility = View.GONE
 
-		lifecycleScope.launchWhenCreated {
-			val log = withContext(Dispatchers.IO) {
-				try {
-					val process = Runtime.getRuntime().exec("logcat -d -v threadtime --pid=${android.os.Process.myPid()}")
-					process.inputStream.bufferedReader().readText()
-				} catch (e: Exception) {
-					"Failed to capture logcat: \${e.message}"
+		lifecycleScope.launch {
+			repeatOnLifecycle(Lifecycle.State.CREATED) {
+				val log = withContext(Dispatchers.IO) {
+					try {
+						val process = Runtime.getRuntime().exec("logcat -d -v threadtime --pid=${android.os.Process.myPid()}")
+						process.inputStream.bufferedReader().readText()
+					} catch (e: Exception) {
+						"Failed to capture logcat: ${e.message}"
+					}
 				}
-			}
-			viewBinding.textViewReport.text = log
-			viewBinding.scrollView.post {
-				viewBinding.scrollView.fullScroll(View.FOCUS_DOWN)
-			}
-
-			viewBinding.buttonCopy.setOnClickListener {
-				val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-				clipboard.setPrimaryClip(ClipData.newPlainText("Logcat", log))
-				Snackbar.make(viewBinding.root, R.string.copied_to_clipboard, Snackbar.LENGTH_SHORT).show()
-			}
-
-			viewBinding.buttonShare.setOnClickListener {
-				val intent = Intent(Intent.ACTION_SEND).apply {
-					type = "text/plain"
-					putExtra(Intent.EXTRA_TEXT, log)
+				viewBinding.textViewReport.text = log
+				viewBinding.scrollView.post {
+					viewBinding.scrollView.fullScroll(View.FOCUS_DOWN)
 				}
-				startActivity(Intent.createChooser(intent, getString(R.string.share_logs)))
+
+				viewBinding.buttonCopy.setOnClickListener {
+					val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+					clipboard.setPrimaryClip(ClipData.newPlainText("Logcat", log))
+					Toast.makeText(this@LogcatActivity, R.string.crash_report_copied, Toast.LENGTH_SHORT).show()
+				}
+
+				viewBinding.buttonShare.setOnClickListener {
+					val intent = Intent(Intent.ACTION_SEND).apply {
+						type = "text/plain"
+						putExtra(Intent.EXTRA_TEXT, log)
+					}
+					startActivity(Intent.createChooser(intent, getString(R.string.share_logs)))
+				}
 			}
 		}
 	}
