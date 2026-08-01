@@ -13,10 +13,11 @@ class WsrvNlProxyInterceptor @Inject constructor(
 ) : BaseImageProxyInterceptor() {
 
 	fun buildUrl(url: String, includeCoilSize: Boolean = false, coilW: Int = 0, coilH: Int = 0): HttpUrl {
+		val strippedUrl = url.replaceFirst(Regex("^https?://"), "")
 		val newUrl = HttpUrl.Builder()
 			.scheme("https")
 			.host("wsrv.nl")
-			.addQueryParameter("url", url)
+			.addQueryParameter("url", strippedUrl)
 
 		if (settings.wsrvLossless) {
 			newUrl.addQueryParameter("ll", null)
@@ -113,13 +114,8 @@ class WsrvNlProxyInterceptor @Inject constructor(
 
 	override suspend fun onInterceptPageRequest(request: Request): Request {
 		val sourceUrl = request.url
-		val targetUrl = HttpUrl.Builder()
-			.scheme("https")
-			.host("wsrv.nl")
-			.addQueryParameter("url", sourceUrl.toString())
-			.addQueryParameter("we", null)
 		return request.newBuilder()
-			.url(targetUrl.build())
+			.url(buildUrl(sourceUrl.toString(), includeCoilSize = false))
 			.build()
 	}
 }
