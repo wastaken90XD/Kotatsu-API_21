@@ -14,7 +14,7 @@ class WsrvNlProxyInterceptor @Inject constructor(
 
 	fun buildUrl(url: String, includeCoilSize: Boolean = false, coilW: Int = 0, coilH: Int = 0): HttpUrl {
 		android.util.Log.d("WSRV_DEBUG", "WsrvNlProxyInterceptor.buildUrl() called. Input URL: $url")
-		val strippedUrl = url.replaceFirst(Regex("^https?://"), "")
+		val strippedUrl = url.substringBefore("?").replaceFirst(Regex("^https?://"), "")
 		android.util.Log.d("WSRV_DEBUG", "Stripped URL: $strippedUrl")
 		val newUrl = HttpUrl.Builder()
 			.scheme("https")
@@ -112,7 +112,7 @@ class WsrvNlProxyInterceptor @Inject constructor(
 			coilH = (size.height as? Dimension.Pixels)?.px ?: 0
 		}
 		return request.newBuilder()
-			.data(buildUrl(url.toString(), includeCoilSize, coilW, coilH))
+			.data(buildUrl(url.toString(), includeCoilSize, coilW, coilH).toString())
 			.build()
 	}
 
