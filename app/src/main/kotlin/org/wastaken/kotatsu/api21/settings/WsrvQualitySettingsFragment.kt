@@ -59,6 +59,10 @@ class WsrvQualitySettingsFragment : BasePreferenceFragment(R.string.wsrv_quality
 		
 		fitPref?.summary = getString(R.string.wsrv_fit_summary) + dimensionsNote
 		alignPref?.summary = getString(R.string.wsrv_alignment_summary) + dimensionsNote
+
+		val workerEnabled = settings.wsrvWorkerEnabled
+		findPreference<EditTextPreference>(AppSettings.KEY_WSRV_WORKER_URL)?.isVisible = workerEnabled
+		findPreference<EditTextPreference>(AppSettings.KEY_WSRV_WORKER_QUERY_PARAM)?.isVisible = workerEnabled
 	}
 
 	private fun updateLivePreview() {

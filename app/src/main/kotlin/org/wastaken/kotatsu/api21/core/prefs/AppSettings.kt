@@ -499,6 +499,14 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	val wsrvLossless: Boolean
 		get() = prefs.getBoolean(KEY_WSRV_LOSSLESS, false)
 
+	// Optional Cloudflare Worker relay in front of wsrv.nl (default off)
+	val wsrvWorkerEnabled: Boolean
+		get() = prefs.getBoolean(KEY_WSRV_WORKER_ENABLED, false)
+	val wsrvWorkerUrl: String
+		get() = prefs.getString(KEY_WSRV_WORKER_URL, null) ?: ""
+	val wsrvWorkerQueryParam: String
+		get() = prefs.getString(KEY_WSRV_WORKER_QUERY_PARAM, null)?.takeIf { it.isNotBlank() } ?: "url"
+
 	val proxyLogin: String?
 		get() = prefs.getString(KEY_PROXY_LOGIN, null)?.nullIfEmpty()
 
@@ -831,6 +839,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_WSRV_PNG_LEVEL = "wsrv_png_level"
 		const val KEY_WSRV_PNG_FILTER = "wsrv_png_filter"
 		const val KEY_WSRV_LOSSLESS = "wsrv_lossless"
+		const val KEY_WSRV_WORKER_ENABLED = "wsrv_worker_enabled"
+		const val KEY_WSRV_WORKER_URL = "wsrv_worker_url"
+		const val KEY_WSRV_WORKER_QUERY_PARAM = "wsrv_worker_query_param"
 		const val KEY_LOCAL_MANGA_DIRS = "local_manga_dirs"
 		const val KEY_DISABLE_NSFW = "no_nsfw"
 		const val KEY_RELATED_MANGA = "related_manga"

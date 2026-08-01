@@ -149,6 +149,29 @@
 			android:inputType="textCapCharacters" />
 	</PreferenceCategory>
 
+	<PreferenceCategory android:title="@string/wsrv_cat_worker">
+		<SwitchPreferenceCompat
+			android:defaultValue="false"
+			android:key="wsrv_worker_enabled"
+			android:title="@string/wsrv_worker_relay"
+			android:summary="@string/wsrv_worker_relay_summary" />
+
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_worker_url"
+			android:title="@string/wsrv_worker_url"
+			android:summary="@string/wsrv_worker_url_summary"
+			android:hint="@string/wsrv_worker_url_hint"
+			android:inputType="textUri" />
+
+		<EditTextPreference
+			android:defaultValue="url"
+			android:key="wsrv_worker_query_param"
+			android:title="@string/wsrv_worker_query_param"
+			android:summary="@string/wsrv_worker_query_param_summary"
+			android:inputType="text" />
+	</PreferenceCategory>
+
 	<PreferenceCategory android:title="Live URL Preview">
 		<Preference
 			android:key="wsrv_url_preview"
