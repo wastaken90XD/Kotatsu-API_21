@@ -43,6 +43,9 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 	@Inject
 	lateinit var captchaHandler: CaptchaHandler
 
+	@Inject
+	lateinit var cloudFlareVerifier: CloudFlareVerifier
+
 	private lateinit var cfClient: CloudFlareClient
 
 	override fun onCreate2(savedInstanceState: Bundle?, source: MangaSource, repository: ParserMangaRepository?) {
@@ -52,7 +55,18 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 			finishAfterTransition()
 			return
 		}
-		cfClient = CloudFlareClient(cookieJar, this, adBlock, url)
+		// Reuse the last User-Agent that successfully passed a challenge for
+		// this host, so the cached cf_clearance token stays valid. This also
+		// keeps the solving UA stable across attempts.
+		url.toHttpUrlOrNull()?.host?.let { host ->
+			cloudFlareVerifier.getSolvedUserAgent(host)?.let { solvedUa ->
+				viewBinding.webView.settings.userAgentString = solvedUa
+			}
+		}
+		// The challenge page must render unmodified: any ad-blocking that
+		// alters the DOM or blocks scripts breaks Cloudflare's challenge JS
+		// and causes the verification loop. So the solver runs without it.
+		cfClient = CloudFlareClient(cookieJar, this, adBlock = null, targetUrl = url)
 		viewBinding.webView.webViewClient = cfClient
 		lifecycleScope.launch {
 			try {
@@ -104,6 +118,14 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 
 	override fun onCheckPassed() {
 		pendingResult = RESULT_OK
+		// Persist the exact UA that passed the challenge for this host, so the
+		// cf_clearance token in the cookie jar stays valid for the OkHttp
+		// fetches and for future verification attempts.
+		runCatching {
+			intent?.dataString?.toHttpUrlOrNull()?.host?.let { host ->
+				cloudFlareVerifier.rememberSolvedUserAgent(host, viewBinding.webView.settings.userAgentString)
+			}
+		}
 		lifecycleScope.launch {
 			val source = intent?.getStringExtra(AppRouter.KEY_SOURCE)
 			if (source != null) {
