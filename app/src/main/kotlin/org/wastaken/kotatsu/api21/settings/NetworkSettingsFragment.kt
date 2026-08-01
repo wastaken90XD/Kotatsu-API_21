@@ -25,6 +25,7 @@ class NetworkSettingsFragment :
 			setDefaultValueCompat(DoHProvider.NONE.name)
 		}
 		bindProxySummary()
+		updateWsrvVisibility()
 	}
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -48,7 +49,15 @@ class NetworkSettingsFragment :
 			AppSettings.KEY_PROXY_PORT -> {
 				bindProxySummary()
 			}
+
+			AppSettings.KEY_IMAGES_PROXY -> {
+				updateWsrvVisibility()
+			}
 		}
+	}
+
+	private fun updateWsrvVisibility() {
+		findPreference<Preference>("wsrv_quality")?.isVisible = settings.imagesProxy == 0
 	}
 
 	private fun bindProxySummary() {

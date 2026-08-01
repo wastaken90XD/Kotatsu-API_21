@@ -18,6 +18,52 @@
 	<string name="computing_">Computing…</string>
 	<string name="chapter_d_of_d">Chapter %1$d of %2$d</string>
 	<string name="close">Close</string>
+	<string name="wsrv_quality_settings" translatable="false">Image quality (wsrv.nl)</string>
+	<string name="wsrv_cat_output" translatable="false">Output</string>
+	<string name="wsrv_format" translatable="false">Output format</string>
+	<string name="wsrv_format_summary" translatable="false">Convert images to a different format. WebP and AVIF offer better compression than JPEG. Options: jpg, png, webp, avif, gif, tiff.</string>
+	<string name="wsrv_lossless" translatable="false">Lossless</string>
+	<string name="wsrv_lossless_summary" translatable="false">Preserve full quality with no compression. Increases file size. Disables Quality slider.</string>
+	<string name="wsrv_quality" translatable="false">Quality</string>
+	<string name="wsrv_quality_summary" translatable="false">Compression level 1–100. Lower values reduce file size. Disabled when Lossless is on.</string>
+	<string name="wsrv_progressive" translatable="false">Progressive/interlaced</string>
+	<string name="wsrv_progressive_summary" translatable="false">Render JPEG as progressive and GIF/PNG as interlaced for faster perceived loading.</string>
+	<string name="wsrv_png_level" translatable="false">PNG compression level</string>
+	<string name="wsrv_png_level_summary" translatable="false">zlib compression level for PNG output. Range 0–9.</string>
+	<string name="wsrv_png_filter" translatable="false">PNG adaptive filter</string>
+	<string name="wsrv_png_filter_summary" translatable="false">Use adaptive row filtering to reduce PNG file size. PNG output only.</string>
+
+	<string name="wsrv_cat_dimensions" translatable="false">Dimensions</string>
+	<string name="wsrv_max_width" translatable="false">Max width</string>
+	<string name="wsrv_max_width_summary" translatable="false">Downscale images wider than this value in pixels. Leave empty for original size.</string>
+	<string name="wsrv_max_height" translatable="false">Max height</string>
+	<string name="wsrv_max_height_summary" translatable="false">Downscale images taller than this value in pixels. Leave empty for original size.</string>
+	<string name="wsrv_dpr" translatable="false">Device pixel ratio</string>
+	<string name="wsrv_dpr_summary" translatable="false">Output density multiplier. Use 2 or 3 for high-density screens.</string>
+	<string name="wsrv_never_upscale" translatable="false">Never upscale</string>
+	<string name="wsrv_never_upscale_summary" translatable="false">Prevent small images from being enlarged, avoiding pixelation.</string>
+	<string name="wsrv_fit" translatable="false">Fit mode</string>
+	<string name="wsrv_fit_summary" translatable="false">How the image fills the target dimensions. Options: cover, contain, fill, inside, outside.</string>
+	<string name="wsrv_alignment" translatable="false">Alignment</string>
+	<string name="wsrv_alignment_summary" translatable="false">Crop alignment when using fit. Options: center, top, bottom, left, right, entropy, attention.</string>
+
+	<string name="wsrv_cat_adjustments" translatable="false">Adjustments</string>
+	<string name="wsrv_sharpen" translatable="false">Sharpen</string>
+	<string name="wsrv_sharpen_summary" translatable="false">Apply sharpening after compression to restore detail. 0 = off.</string>
+	<string name="wsrv_blur" translatable="false">Blur</string>
+	<string name="wsrv_blur_summary" translatable="false">Apply blur. Range 0.3–1000. 0 = off.</string>
+	<string name="wsrv_contrast" translatable="false">Contrast</string>
+	<string name="wsrv_contrast_summary" translatable="false">Adjust contrast. Range -100 to 100. 0 = no change.</string>
+	<string name="wsrv_saturation" translatable="false">Saturation</string>
+	<string name="wsrv_saturation_summary" translatable="false">Adjust colour saturation. Range -100 to 100. 0 = no change.</string>
+	<string name="wsrv_gamma" translatable="false">Gamma</string>
+	<string name="wsrv_gamma_summary" translatable="false">Apply gamma correction. Range 1.0–3.0.</string>
+	<string name="wsrv_hue" translatable="false">Hue rotation</string>
+	<string name="wsrv_hue_summary" translatable="false">Rotate hue. Range 0–360 degrees.</string>
+	<string name="wsrv_brightness" translatable="false">Brightness</string>
+	<string name="wsrv_brightness_summary" translatable="false">Brightness multiplier. 1.0 = no change.</string>
+	<string name="wsrv_tint" translatable="false">Tint</string>
+	<string name="wsrv_tint_summary" translatable="false">Apply a colour tint. Enter a hex colour value.</string>
 	<string name="try_again">Try again</string>
 	<!-- Should be short -->
 	<string name="retry">Retry</string>

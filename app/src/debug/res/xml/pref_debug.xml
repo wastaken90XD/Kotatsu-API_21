@@ -8,4 +8,9 @@
 		android:persistent="false"
 		android:title="@string/wi_lib_name" />
 
+	<Preference
+		android:key="logcat"
+		android:persistent="false"
+		android:title="Logcat" />
+
 </androidx.preference.PreferenceScreen>

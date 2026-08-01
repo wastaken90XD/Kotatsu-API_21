@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:title="@string/wsrv_quality_settings">
+
+	<PreferenceCategory android:title="@string/wsrv_cat_output">
+		<ListPreference
+			android:defaultValue="original"
+			android:entries="@array/wsrv_formats"
+			android:entryValues="@array/values_wsrv_formats"
+			android:key="wsrv_format"
+			android:title="@string/wsrv_format"
+			android:summary="@string/wsrv_format_summary" />
+
+		<SwitchPreferenceCompat
+			android:defaultValue="false"
+			android:key="wsrv_lossless"
+			android:title="@string/wsrv_lossless"
+			android:summary="@string/wsrv_lossless_summary" />
+
+		<EditTextPreference
+			android:defaultValue="0"
+			android:key="wsrv_quality"
+			android:title="@string/wsrv_quality"
+			android:summary="@string/wsrv_quality_summary"
+			android:inputType="number" />
+
+		<SwitchPreferenceCompat
+			android:defaultValue="false"
+			android:key="wsrv_progressive"
+			android:title="@string/wsrv_progressive"
+			android:summary="@string/wsrv_progressive_summary" />
+
+		<EditTextPreference
+			android:defaultValue="0"
+			android:key="wsrv_png_level"
+			android:title="@string/wsrv_png_level"
+			android:summary="@string/wsrv_png_level_summary"
+			android:inputType="number" />
+
+		<SwitchPreferenceCompat
+			android:defaultValue="false"
+			android:key="wsrv_png_filter"
+			android:title="@string/wsrv_png_filter"
+			android:summary="@string/wsrv_png_filter_summary" />
+	</PreferenceCategory>
+
+	<PreferenceCategory android:title="@string/wsrv_cat_dimensions">
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_max_width"
+			android:title="@string/wsrv_max_width"
+			android:summary="@string/wsrv_max_width_summary"
+			android:inputType="number" />
+
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_max_height"
+			android:title="@string/wsrv_max_height"
+			android:summary="@string/wsrv_max_height_summary"
+			android:inputType="number" />
+
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_dpr"
+			android:title="@string/wsrv_dpr"
+			android:summary="@string/wsrv_dpr_summary"
+			android:inputType="numberDecimal" />
+
+		<SwitchPreferenceCompat
+			android:defaultValue="false"
+			android:key="wsrv_never_upscale"
+			android:title="@string/wsrv_never_upscale"
+			android:summary="@string/wsrv_never_upscale_summary" />
+
+		<ListPreference
+			android:defaultValue="cover"
+			android:entries="@array/wsrv_fits"
+			android:entryValues="@array/values_wsrv_fits"
+			android:key="wsrv_fit"
+			android:title="@string/wsrv_fit"
+			android:summary="@string/wsrv_fit_summary" />
+
+		<ListPreference
+			android:defaultValue="center"
+			android:entries="@array/wsrv_alignments"
+			android:entryValues="@array/values_wsrv_alignments"
+			android:key="wsrv_alignment"
+			android:title="@string/wsrv_alignment"
+			android:summary="@string/wsrv_alignment_summary" />
+	</PreferenceCategory>
+
+	<PreferenceCategory android:title="@string/wsrv_cat_adjustments">
+		<EditTextPreference
+			android:defaultValue="0"
+			android:key="wsrv_sharpen"
+			android:title="@string/wsrv_sharpen"
+			android:summary="@string/wsrv_sharpen_summary"
+			android:inputType="number" />
+
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_blur"
+			android:title="@string/wsrv_blur"
+			android:summary="@string/wsrv_blur_summary"
+			android:inputType="numberDecimal" />
+
+		<EditTextPreference
+			android:defaultValue="0"
+			android:key="wsrv_contrast"
+			android:title="@string/wsrv_contrast"
+			android:summary="@string/wsrv_contrast_summary"
+			android:inputType="numberSigned" />
+
+		<EditTextPreference
+			android:defaultValue="0"
+			android:key="wsrv_saturation"
+			android:title="@string/wsrv_saturation"
+			android:summary="@string/wsrv_saturation_summary"
+			android:inputType="numberSigned" />
+
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_gamma"
+			android:title="@string/wsrv_gamma"
+			android:summary="@string/wsrv_gamma_summary"
+			android:inputType="numberDecimal" />
+
+		<EditTextPreference
+			android:defaultValue="0"
+			android:key="wsrv_hue"
+			android:title="@string/wsrv_hue"
+			android:summary="@string/wsrv_hue_summary"
+			android:inputType="number" />
+
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_brightness"
+			android:title="@string/wsrv_brightness"
+			android:summary="@string/wsrv_brightness_summary"
+			android:inputType="numberDecimal" />
+
+		<EditTextPreference
+			android:defaultValue=""
+			android:key="wsrv_tint"
+			android:title="@string/wsrv_tint"
+			android:summary="@string/wsrv_tint_summary"
+			android:inputType="textCapCharacters" />
+	</PreferenceCategory>
+
+	<PreferenceCategory android:title="Live URL Preview">
+		<Preference
+			android:key="wsrv_url_preview"
+			android:summary="https://wsrv.nl/?url=..." />
+	</PreferenceCategory>
+
+</PreferenceScreen>
