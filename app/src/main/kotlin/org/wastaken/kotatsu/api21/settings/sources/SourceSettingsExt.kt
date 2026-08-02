@@ -101,6 +101,15 @@ private fun PreferenceFragmentCompat.addPreferencesFromParserRepository(reposito
 					summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
 				}
 			}
+
+			is ConfigKey.StringConfig -> {
+				EditTextPreference(screen.context).apply {
+					setDefaultValue(key.defaultValue)
+					summaryProvider = EditTextDefaultSummaryProvider(key.defaultValue)
+					setTitle(key.key)
+					setDialogTitle(key.key)
+				}
+			}
 		}
 		preference.isIconSpaceReserved = false
 		preference.key = key.key

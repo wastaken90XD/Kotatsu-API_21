@@ -43,6 +43,7 @@ class SourceSettings(context: Context, source: MangaSource) : MangaSourceConfig 
 			is ConfigKey.ShowSuspiciousContent -> prefs.getBoolean(key.key, key.defaultValue)
 			is ConfigKey.SplitByTranslations -> prefs.getBoolean(key.key, key.defaultValue)
 			is ConfigKey.PreferredImageServer -> prefs.getString(key.key, key.defaultValue)?.nullIfEmpty()
+			is ConfigKey.StringConfig -> prefs.getString(key.key, key.defaultValue) ?: key.defaultValue
 		} as T
 	}
 
@@ -53,6 +54,7 @@ class SourceSettings(context: Context, source: MangaSource) : MangaSourceConfig 
 			is ConfigKey.UserAgent -> putString(key.key, (value as String?)?.sanitizeHeaderValue())
 			is ConfigKey.SplitByTranslations -> putBoolean(key.key, value as Boolean)
 			is ConfigKey.PreferredImageServer -> putString(key.key, value as String? ?: "")
+			is ConfigKey.StringConfig -> putString(key.key, value as String)
 		}
 	}
 
