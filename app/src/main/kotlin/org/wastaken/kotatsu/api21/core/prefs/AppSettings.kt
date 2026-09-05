@@ -613,6 +613,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	val isPagesSavingAskEnabled: Boolean
 		get() = prefs.getBoolean(KEY_PAGES_SAVE_ASK, true)
 
+	val isPagesSaveOriginalEnabled: Boolean
+		get() = prefs.getBoolean(KEY_PAGES_SAVE_ORIGINAL, true)
+
 	val isStatsEnabled: Boolean
 		get() = prefs.getBoolean(KEY_STATS_ENABLED, false)
 
@@ -863,6 +866,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_READING_TIME = "reading_time"
 		const val KEY_PAGES_SAVE_DIR = "pages_dir"
 		const val KEY_PAGES_SAVE_ASK = "pages_dir_ask"
+		const val KEY_PAGES_SAVE_ORIGINAL = "pages_save_original"
 		const val KEY_STATS_ENABLED = "stats_on"
 		const val KEY_FEED_HEADER = "feed_header"
 		const val KEY_SEARCH_SUGGESTION_TYPES = "search_suggest_types"

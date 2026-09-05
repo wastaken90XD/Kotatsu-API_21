@@ -53,6 +53,12 @@
 			android:key="pages_dir_ask"
 			android:title="@string/ask_for_dest_dir_every_time" />
 
+		<SwitchPreferenceCompat
+			android:defaultValue="true"
+			android:key="pages_save_original"
+			android:summary="@string/pages_save_original_summary"
+			android:title="@string/pages_save_original_title" />
+
 	</PreferenceCategory>
 
 </PreferenceScreen>
