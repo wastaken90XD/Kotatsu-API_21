@@ -29,6 +29,14 @@ internal fun String.looksLikeMedia(): Boolean {
 	return looksLikeGif() || looksLikeVideo()
 }
 
+/** Best-effort mime type for a video page URL, used for ACTION_VIEW intents. */
+internal fun String.videoMimeType(): String {
+	return when (urlExtension().lowercase()) {
+		"webm" -> "video/webm"
+		else -> "video/mp4" // mp4, gifv and unknown extensions
+	}
+}
+
 internal fun ReaderPage.isBooru(): Boolean {
 	return (source.unwrap() as? MangaParserSource)?.contentType == ContentType.BOORU
 }

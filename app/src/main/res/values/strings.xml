@@ -115,6 +115,9 @@
 	<string name="pages_saved">Pages saved</string>
 	<string name="save_image">Save image</string>
 	<string name="load_gif">Load GIF</string>
+	<string name="load_video">Load video</string>
+	<string name="play_in_app">Play in app</string>
+	<string name="open_external">Open external</string>
 	<string name="pages_save_original_title">Save original image</string>
 	<string name="pages_save_original_summary">Download the untouched original file instead of the cached or proxy-optimized version</string>
 	<string name="share_image">Share image</string>
