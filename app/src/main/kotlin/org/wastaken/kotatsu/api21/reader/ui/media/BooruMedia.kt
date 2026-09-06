@@ -37,6 +37,26 @@ internal fun String.videoMimeType(): String {
 	}
 }
 
+/** A playable stream variant (quality level) for a booru video page. */
+internal data class StreamVariant(
+	val label: String,
+	val url: String,
+)
+
+/**
+ * Stream-quality variants for a booru video page URL.
+ *
+ * Booru page data from the parser model carries only the original file URL (plus
+ * the still-image preview), so today only the original stream is known. Some
+ * booru engines do serve lower-quality siblings (e.g. 720p/480p samples) — for
+ * those, derive the variant URLs from the URL pattern here. The video overlay
+ * automatically shows a quality picker as soon as this returns more than one
+ * entry; with a single entry the picker step is skipped.
+ */
+internal fun String.videoStreamVariants(): List<StreamVariant> {
+	return listOf(StreamVariant("Original (auto)", this))
+}
+
 internal fun ReaderPage.isBooru(): Boolean {
 	return (source.unwrap() as? MangaParserSource)?.contentType == ContentType.BOORU
 }

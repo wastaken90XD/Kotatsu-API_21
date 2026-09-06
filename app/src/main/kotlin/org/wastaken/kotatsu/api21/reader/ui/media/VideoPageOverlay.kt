@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.MediaController
 import android.widget.VideoView
+import androidx.core.net.toFile
 import androidx.core.net.toUri
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -17,30 +18,47 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import okio.sink
+import okio.source
+import org.koitharu.kotatsu.parsers.model.MangaPage
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.util.ext.getDisplayMessage
+import org.wastaken.kotatsu.api21.core.util.ext.isNetworkUri
+import org.wastaken.kotatsu.api21.core.util.ext.writeAllCancellable
 import org.wastaken.kotatsu.api21.databinding.LayoutBooruVideoOverlayBinding
 import org.wastaken.kotatsu.api21.reader.domain.PageLoader
 import org.wastaken.kotatsu.api21.reader.ui.pager.ReaderPage
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
 
 /**
  * Explicit-load video support for booru reader pages.
  *
- * Videos must never load or play automatically: when a booru page URL ends in a
- * video extension (.mp4/.webm/.gifv, see BooruMedia.kt) this overlay shows a
- * static placeholder with a "Load video" button and the normal page pipeline is
- * suppressed (no prefetch, no page download). Tapping the button offers the choice
- * to play in-app or open the original URL externally.
+ * Videos never load or play automatically: when a booru page URL ends in a video
+ * extension (.mp4/.webm/.gifv, see BooruMedia.kt) this overlay shows a static
+ * placeholder with a "Load video" button and the normal page pipeline is
+ * suppressed (no prefetch, no page download). Tapping the button offers:
+ *  - Play in app: downloads the file through the regular page loader (source
+ *    headers / proxy / fallback apply, result lands in the page cache) and plays
+ *    it in a [VideoView] with a [MediaController]. Download-then-play is
+ *    deliberate: streaming with source headers is impossible on [VideoView].
+ *    Decode failures fall back to an external player.
+ *  - Download video: saves the file into the app's configured download folder,
+ *    honoring the "save original bytes" preference (untouched source download
+ *    straight to storage instead of the page-cache copy).
+ *  - Play in VLC / Open external: hands the original URL to VLC (falls back to
+ *    any external handler when VLC is not installed).
  *
- * In-app playback downloads the file first through the regular page loader (source
- * headers / proxy / fallback apply, result lands in the page cache) and then plays
- * it in a plain [VideoView] — download-then-play is deliberate: streaming with
- * source headers cannot be expressed on [VideoView] and starting playback before
- * the file is cached makes scrubbing unreliable. Fails over to an external player
- * if the device cannot decode the stream.
+ * Quality selection is automatic: [String.videoStreamVariants] returning more
+ * than one entry inserts a quality pick step before the action dialog
+ * (single-variant pages, the common case today, skip it).
  *
  * [VideoView] and [MediaController] are created with the application context:
  * using the Activity context leaks SubtitleController instances on API 21.
@@ -59,10 +77,18 @@ class VideoPageOverlay(
 
 	private var loadJob: Job? = null
 	private var currentPage: ReaderPage? = null
+	private var currentStreamUrl: String? = null
 	private var videoView: VideoView? = null
 
+	private val appContext: Context
+		get() = binding.root.context.applicationContext
+
+	private val entryPoint: ReaderMediaEntryPoint by lazy(LazyThreadSafetyMode.NONE) {
+		EntryPointAccessors.fromApplication(appContext, ReaderMediaEntryPoint::class.java)
+	}
+
 	private val audioManager: AudioManager by lazy(LazyThreadSafetyMode.NONE) {
-		binding.root.context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+		appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 	}
 
 	private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { what ->
@@ -85,11 +111,9 @@ class VideoPageOverlay(
 			return false
 		}
 		currentPage = page
+		currentStreamUrl = page.url
 		binding.root.isVisible = true
-		binding.panelVideo.isVisible = true
-		binding.progressVideo.isGone = true
-		binding.buttonLoadVideo.isVisible = true
-		binding.videoContainer.isGone = true
+		showButtonState()
 		binding.buttonLoadVideo.setOnClickListener { showChoiceDialog(page) }
 		return true
 	}
@@ -116,41 +140,78 @@ class VideoPageOverlay(
 		loadJob = null
 		stopVideo()
 		currentPage = null
+		currentStreamUrl = null
 		binding.root.isGone = true
 	}
 
+	// region dialogs
+
 	private fun showChoiceDialog(page: ReaderPage) {
-		val options = arrayOf(
-			binding.root.resources.getString(R.string.play_in_app),
-			binding.root.resources.getString(R.string.open_external),
+		val variants = page.url.videoStreamVariants()
+		if (variants.size > 1) {
+			showQualityDialog(page, variants)
+		} else {
+			showActionDialog(page, variants.first().url)
+		}
+	}
+
+	private fun showQualityDialog(page: ReaderPage, variants: List<StreamVariant>) {
+		MaterialAlertDialogBuilder(binding.root.context)
+			.setTitle(R.string.select_quality)
+			.setItems(variants.map { it.label }.toTypedArray()) { _, which ->
+				showActionDialog(page, variants[which].url)
+			}
+			.setNegativeButton(android.R.string.cancel, null)
+			.show()
+	}
+
+	private fun showActionDialog(page: ReaderPage, streamUrl: String) {
+		val res = binding.root.resources
+		val items = arrayOf(
+			res.getString(R.string.play_in_app),
+			res.getString(R.string.download_video),
+			res.getString(R.string.play_in_vlc),
+			res.getString(R.string.open_external),
 		)
+		currentStreamUrl = streamUrl
 		MaterialAlertDialogBuilder(binding.root.context)
 			.setTitle(R.string.load_video)
-			.setItems(options) { _, which ->
+			.setItems(items) { _, which ->
 				when (which) {
-					0 -> playInApp(page)
-					1 -> openExternalOrError(page)
+					0 -> playInApp(page, streamUrl)
+					1 -> downloadVideo(page, streamUrl)
+					2 -> {
+						// VLC first; transparently fall back to any external handler
+						if (!openExternal(streamUrl, VLC_PACKAGE) && !openExternal(streamUrl)) {
+							showErrorSnackbar(Snackbar.LENGTH_SHORT)
+						}
+					}
+					3 -> if (!openExternal(streamUrl)) {
+						showErrorSnackbar(Snackbar.LENGTH_SHORT)
+					}
 				}
 			}
 			.setNegativeButton(android.R.string.cancel, null)
 			.show()
 	}
 
-	private fun playInApp(page: ReaderPage) {
+	// endregion
+
+	// region in-app playback
+
+	private fun playInApp(page: ReaderPage, streamUrl: String) {
 		if (loadJob?.isActive == true) {
 			return
 		}
 		loadJob = lifecycleOwner.lifecycleScope.launch {
-			binding.buttonLoadVideo.isGone = true
-			binding.progressVideo.isVisible = true
+			showLoadingState()
 			try {
-				val uri = loader.loadPage(page.toMangaPage(), force = false)
+				val uri = loader.loadPage(mangaPageWithUrl(page, streamUrl), force = false)
 				startPlayback(uri)
 			} catch (e: CancellationException) {
 				throw e
 			} catch (e: Throwable) {
-				binding.progressVideo.isGone = true
-				binding.buttonLoadVideo.isVisible = true
+				showButtonState()
 				Snackbar.make(
 					binding.root,
 					e.getDisplayMessage(binding.root.resources),
@@ -172,7 +233,6 @@ class VideoPageOverlay(
 	private fun requireVideoView(): VideoView {
 		videoView?.let { return it }
 		// application context on purpose: an Activity context would leak on API 21
-		val appContext = binding.root.context.applicationContext
 		val view = VideoView(appContext)
 		view.layoutParams = FrameLayout.LayoutParams(
 			ViewGroup.LayoutParams.MATCH_PARENT,
@@ -195,6 +255,15 @@ class VideoPageOverlay(
 		return view
 	}
 
+	private fun onPlaybackError() {
+		stopVideo()
+		val url = currentStreamUrl
+		if (url == null || !openExternal(url)) {
+			// device cannot decode the clip and nothing can play it externally either
+			showErrorSnackbar(Snackbar.LENGTH_LONG)
+		}
+	}
+
 	private fun stopVideo() {
 		videoView?.stopPlayback()
 		if (videoView != null) {
@@ -203,30 +272,72 @@ class VideoPageOverlay(
 		binding.videoContainer.isGone = true
 		if (isHandling) {
 			// back to the static placeholder: explicit load is required again
-			binding.panelVideo.isVisible = true
-			binding.progressVideo.isGone = true
-			binding.buttonLoadVideo.isVisible = true
+			showButtonState()
 		}
 	}
 
-	private fun onPlaybackError() {
-		stopVideo()
-		val page = currentPage
-		if (page == null || !openExternal(page)) {
-			// no fallback: the device cannot decode the clip and nothing can play it externally either
-			Snackbar.make(binding.root, R.string.error_occurred, Snackbar.LENGTH_LONG).show()
+	// endregion
+
+	// region download to storage
+
+	private fun downloadVideo(page: ReaderPage, streamUrl: String) {
+		if (loadJob?.isActive == true) {
+			return
+		}
+		loadJob = lifecycleOwner.lifecycleScope.launch {
+			showLoadingState()
+			try {
+				val dir = entryPoint.settings().getPagesSaveDir(appContext)
+				if (dir == null) {
+					Snackbar.make(binding.root, R.string.no_download_folder, Snackbar.LENGTH_LONG).show()
+				} else {
+					val baseName = SAVE_BASE_NAME + nameDateFormat.format(Date())
+					val extension = streamUrl.urlExtension().ifEmpty { FALLBACK_EXTENSION }
+					val doc = dir.createFile(streamUrl.videoMimeType(), "$baseName.$extension")
+						?: throw IOException("Cannot create destination file")
+					val settings = entryPoint.settings()
+					if (settings.isPagesSaveOriginalEnabled && streamUrl.toUri().isNetworkUri()) {
+						// save-bytes preference: untouched original straight from the source
+						entryPoint.originalImageDownloader().download(streamUrl, page.source, doc.uri)
+					} else {
+						copyTo(loader.loadPage(mangaPageWithUrl(page, streamUrl), force = false), doc.uri)
+					}
+					Snackbar.make(binding.root, R.string.video_saved, Snackbar.LENGTH_LONG).show()
+				}
+				showButtonState()
+			} catch (e: CancellationException) {
+				throw e
+			} catch (e: Throwable) {
+				showButtonState()
+				Snackbar.make(
+					binding.root,
+					e.getDisplayMessage(binding.root.resources),
+					Snackbar.LENGTH_SHORT,
+				).show()
+			}
 		}
 	}
 
-	private fun openExternalOrError(page: ReaderPage) {
-		if (!openExternal(page)) {
-			Snackbar.make(binding.root, R.string.error_occurred, Snackbar.LENGTH_SHORT).show()
+	private suspend fun copyTo(sourceUri: Uri, destination: Uri) = runInterruptible(Dispatchers.IO) {
+		val out = appContext.contentResolver.openOutputStream(destination)
+			?: throw IOException("Cannot open output stream for $destination")
+		out.sink().buffer().use { sink ->
+			sourceUri.toFile().source().use { input ->
+				sink.writeAllCancellable(input)
+			}
 		}
 	}
 
-	private fun openExternal(page: ReaderPage): Boolean {
+	// endregion
+
+	// region external players
+
+	private fun openExternal(url: String, packageName: String? = null): Boolean {
 		val intent = Intent(Intent.ACTION_VIEW)
-			.setDataAndType(page.url.toUri(), page.url.videoMimeType())
+			.setDataAndType(url.toUri(), url.videoMimeType())
+		if (packageName != null) {
+			intent.setPackage(packageName)
+		}
 		val context = binding.root.context
 		return if (intent.resolveActivity(context.packageManager) != null) {
 			context.startActivity(intent)
@@ -234,6 +345,36 @@ class VideoPageOverlay(
 		} else {
 			false
 		}
+	}
+
+	private fun showErrorSnackbar(length: Int) {
+		Snackbar.make(binding.root, R.string.error_occurred, length).show()
+	}
+
+	// endregion
+
+	private fun mangaPageWithUrl(page: ReaderPage, url: String): MangaPage {
+		return if (url == page.url) {
+			page.toMangaPage()
+		} else {
+			// quality-variant streams are cached under their own URL
+			MangaPage(id = page.id, url = url, preview = null, source = page.source)
+		}
+	}
+
+	private fun showLoadingState() {
+		binding.buttonLoadVideo.isGone = true
+		binding.panelVideo.isVisible = true
+		binding.progressVideo.isVisible = true
+	}
+
+	private fun showButtonState() {
+		if (!isHandling) {
+			return
+		}
+		binding.panelVideo.isVisible = true
+		binding.progressVideo.isGone = true
+		binding.buttonLoadVideo.isVisible = true
 	}
 
 	@Suppress("DEPRECATION") // AudioFocusRequest requires API 26, this fork targets API 21
@@ -248,5 +389,15 @@ class VideoPageOverlay(
 	@Suppress("DEPRECATION")
 	private fun abandonAudioFocus() {
 		audioManager.abandonAudioFocus(focusChangeListener)
+	}
+
+	private companion object {
+
+		private const val VLC_PACKAGE = "org.videolan.vlc"
+		private const val SAVE_BASE_NAME = "booru-video-"
+		private const val FALLBACK_EXTENSION = "mp4"
+
+		// all accesses happen on the main thread (same pattern as PageSaveHelper)
+		private val nameDateFormat = SimpleDateFormat("yyyy-MM-dd_HHmm")
 	}
 }

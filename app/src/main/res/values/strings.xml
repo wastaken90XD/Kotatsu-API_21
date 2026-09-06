@@ -118,6 +118,11 @@
 	<string name="load_video">Load video</string>
 	<string name="play_in_app">Play in app</string>
 	<string name="open_external">Open external</string>
+	<string name="play_in_vlc">Play in VLC</string>
+	<string name="download_video">Download video</string>
+	<string name="video_saved">Video saved</string>
+	<string name="select_quality">Select quality</string>
+	<string name="no_download_folder">No download folder configured in settings</string>
 	<string name="pages_save_original_title">Save original image</string>
 	<string name="pages_save_original_summary">Download the untouched original file instead of the cached or proxy-optimized version</string>
 	<string name="share_image">Share image</string>
