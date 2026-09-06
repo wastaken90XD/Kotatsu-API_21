@@ -106,11 +106,12 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 		}
 		val binding = requireViewBinding()
 		val columns = settings.booruGridColumns
-		(binding.recyclerView.layoutManager as? GridLayoutManager)?.let { manager ->
+		(binding.recyclerView.layoutManager as? GridLayoutManager)?.let { manager: GridLayoutManager ->
 			manager.spanCount = columns
 			booruSpanSizeLookup.fullSpan = columns
+			// setSpanCount already invalidates the span-index cache; explicit call keeps
+			// the lookup state consistent
 			booruSpanSizeLookup.invalidateSpanIndexCache()
-			booruSpanSizeLookup.invalidateSpanAssignments()
 		}
 		booruAdapter?.notifyDataSetChanged()
 	}
