@@ -43,6 +43,13 @@
 			android:valueTo="150"
 			app:defaultValue="100" />
 
+		<ListPreference
+			android:defaultValue="3"
+			android:entries="@array/booru_grid_columns"
+			android:key="booru_grid_columns"
+			android:title="@string/booru_grid_columns"
+			app:useSimpleSummaryProvider="true" />
+
 		<SwitchPreferenceCompat
 			android:defaultValue="true"
 			android:key="quick_filter"

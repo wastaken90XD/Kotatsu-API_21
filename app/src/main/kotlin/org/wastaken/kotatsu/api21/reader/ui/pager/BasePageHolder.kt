@@ -53,8 +53,24 @@ abstract class BasePageHolder<B : ViewBinding>(
 		isWebtoon = this is WebtoonHolder,
 	)
 	protected val bindingInfo = LayoutPageInfoBinding.bind(binding.root)
-	private val gifOverlay = GifPageOverlay(LayoutBooruGifOverlayBinding.bind(binding.root), loader, this)
-	private val videoOverlay = VideoPageOverlay(LayoutBooruVideoOverlayBinding.bind(binding.root), loader, this)
+	// The overlay bindings MUST be created from the overlay's own subtree root
+	// (found by id): ViewBinding.bind(rootView) returns a binding whose root is
+	// the passed view, so binding the whole page root would let the overlay
+	// hide the entire page (blank reader regression).
+	private val gifOverlay = GifPageOverlay(
+		LayoutBooruGifOverlayBinding.bind(
+			requireNotNull(binding.root.findViewById(R.id.booru_gif_overlay_root)),
+		),
+		loader,
+		this,
+	)
+	private val videoOverlay = VideoPageOverlay(
+		LayoutBooruVideoOverlayBinding.bind(
+			requireNotNull(binding.root.findViewById(R.id.booru_video_overlay_root)),
+		),
+		loader,
+		this,
+	)
 	protected abstract val ssiv: SubsamplingScaleImageView
 
 	protected val settings: ReaderSettings

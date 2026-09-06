@@ -1,5 +1,6 @@
 package org.wastaken.kotatsu.api21.remotelist.ui
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
@@ -27,7 +28,7 @@ import org.wastaken.kotatsu.api21.core.util.ext.withArgs
 import org.wastaken.kotatsu.api21.databinding.FragmentListBinding
 import org.wastaken.kotatsu.api21.filter.ui.FilterCoordinator
 import org.wastaken.kotatsu.api21.list.ui.MangaListFragment
-import org.wastaken.kotatsu.api21.list.ui.adapter.BOORU_GRID_SPAN
+import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.list.ui.adapter.BooruGridAdapter
 import org.wastaken.kotatsu.api21.list.ui.adapter.ListItemType
 import org.wastaken.kotatsu.api21.list.ui.adapter.MangaListAdapter
@@ -42,6 +43,13 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 	private var booruAdapter: BooruGridAdapter? = null
 	private val booruSpanSizeLookup = BooruSpanSizeLookup()
 
+	/** Live-applies the booru grid column setting (existing AppSettings listener pattern). */
+	private val booruColumnsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+		if (key == AppSettings.KEY_BOORU_GRID_COLUMNS) {
+			onBooruGridColumnsChanged()
+		}
+	}
+
 	override val filterCoordinator: FilterCoordinator
 		get() = viewModel.filterCoordinator
 
@@ -51,6 +59,7 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 		addMenuProvider(MangaSearchMenuProvider(filterCoordinator, viewModel))
 		viewModel.isRandomLoading.observe(viewLifecycleOwner, MenuInvalidator(requireActivity()))
 		viewModel.onOpenManga.observeEvent(viewLifecycleOwner) { router.openDetails(it) }
+		settings.subscribe(booruColumnsListener)
 		filterCoordinator.observe().distinctUntilChangedBy { it.listFilter.isEmpty() }
 			.drop(1)
 			.observe(viewLifecycleOwner) {
@@ -60,9 +69,9 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	override fun onCreateAdapter(): MangaListAdapter {
 		return if (viewModel.isBooru) {
-			// booru sources are browsed as a fixed square-thumbnail grid (see BooruGridAdapter);
+			// booru sources are browsed as a square-thumbnail grid (see BooruGridAdapter);
 			// all other sources keep the standard manga tiles untouched
-			BooruGridAdapter(this).also { booruAdapter = it }
+			BooruGridAdapter(this, settings.booruGridColumns).also { booruAdapter = it }
 		} else {
 			super.onCreateAdapter()
 		}
@@ -73,8 +82,10 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 			super.onListModeChanged(mode)
 			return
 		}
+		val columns = settings.booruGridColumns
+		booruSpanSizeLookup.fullSpan = columns
 		with(requireViewBinding().recyclerView) {
-			layoutManager = GridLayoutManager(context, BOORU_GRID_SPAN).also {
+			layoutManager = GridLayoutManager(context, columns).also {
 				it.spanSizeLookup = booruSpanSizeLookup
 			}
 			setItemViewCacheSize(BOORU_VIEW_CACHE_SIZE)
@@ -82,23 +93,43 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 	}
 
 	override fun onGridScaleChanged(scale: Float) {
-		// the booru grid span is fixed: the grid size setting does not apply to it
+		// the global grid-size scale does not apply to the booru grid: it follows its
+		// own column-count setting (booru_grid_columns) instead
 		if (!viewModel.isBooru) {
 			super.onGridScaleChanged(scale)
 		}
 	}
 
+	private fun onBooruGridColumnsChanged() {
+		if (!viewModel.isBooru) {
+			return
+		}
+		val binding = requireViewBinding()
+		val columns = settings.booruGridColumns
+		(binding.recyclerView.layoutManager as? GridLayoutManager)?.let { manager ->
+			manager.spanCount = columns
+			booruSpanSizeLookup.fullSpan = columns
+			booruSpanSizeLookup.invalidateSpanIndexCache()
+			booruSpanSizeLookup.invalidateSpanAssignments()
+		}
+		booruAdapter?.notifyDataSetChanged()
+	}
+
 	override fun onDestroyView() {
+		settings.unsubscribe(booruColumnsListener)
 		booruAdapter = null
 		super.onDestroyView()
 	}
 
 	private inner class BooruSpanSizeLookup : GridLayoutManager.SpanSizeLookup() {
 
+		/** Mirrors the current column count: state/footer rows are always full-width. */
+		var fullSpan: Int = 3
+
 		override fun getSpanSize(position: Int): Int {
 			return when (booruAdapter?.getItemViewType(position)) {
 				ListItemType.BOORU_GRID.ordinal -> 1
-				else -> BOORU_GRID_SPAN
+				else -> fullSpan
 			}
 		}
 	}

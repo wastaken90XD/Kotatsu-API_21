@@ -53,7 +53,9 @@ class GifPageOverlay(
 	/** @return true if this overlay handles the page and the normal page load must be suppressed. */
 	fun onBind(page: ReaderPage): Boolean {
 		reset()
-		isHandling = page.isBooruGif()
+		// source check comes first, always (see BooruMedia.kt): a non-booru page
+		// with a gif-looking URL is just an ordinary page for this overlay
+		isHandling = page.isBooru() && page.url.looksLikeGif()
 		if (!isHandling) {
 			return false
 		}

@@ -98,6 +98,11 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		get() = prefs.getInt(KEY_GRID_SIZE_PAGES, 100)
 		set(value) = prefs.edit { putInt(KEY_GRID_SIZE_PAGES, value) }
 
+	/** Booru grid column count (2..4, default 3). ListPreference stores it as text. */
+	val booruGridColumns: Int
+		get() = (prefs.getString(KEY_BOORU_GRID_COLUMNS, null)?.toIntOrNull() ?: BOORU_GRID_COLUMNS_DEFAULT)
+			.coerceIn(BOORU_GRID_COLUMNS_MIN, BOORU_GRID_COLUMNS_MAX)
+
 	val isQuickFilterEnabled: Boolean
 		get() = prefs.getBoolean(KEY_QUICK_FILTER, true)
 
@@ -719,6 +724,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_SEARCH_HISTORY_CLEAR = "search_history_clear"
 		const val KEY_UPDATES_FEED_CLEAR = "updates_feed_clear"
 		const val KEY_GRID_SIZE = "grid_size"
+		const val KEY_BOORU_GRID_COLUMNS = "booru_grid_columns"
 		const val KEY_GRID_SIZE_PAGES = "grid_size_pages"
 		const val KEY_REMOTE_SOURCES = "remote_sources"
 		const val KEY_LOCAL_STORAGE = "local_storage"
@@ -906,5 +912,8 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		// values
 		private const val READER_CROP_PAGED = 1
 		private const val READER_CROP_WEBTOON = 2
+		private const val BOORU_GRID_COLUMNS_DEFAULT = 3
+		private const val BOORU_GRID_COLUMNS_MIN = 2
+		private const val BOORU_GRID_COLUMNS_MAX = 4
 	}
 }

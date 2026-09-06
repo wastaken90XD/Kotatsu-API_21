@@ -1,7 +1,9 @@
 package org.wastaken.kotatsu.api21.reader.ui.media
 
 import org.koitharu.kotatsu.parsers.model.ContentType
+import org.koitharu.kotatsu.parsers.model.MangaPage
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
+import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.wastaken.kotatsu.api21.core.model.unwrap
 import org.wastaken.kotatsu.api21.reader.ui.pager.ReaderPage
 
@@ -94,18 +96,22 @@ private fun String.danbooruVideoVariants(): List<StreamVariant>? {
 	}
 }
 
+/** True only for booru parser sources; every reader-media gate originates here. */
+internal fun MangaSource.isBooruSource(): Boolean {
+	return (unwrap() as? MangaParserSource)?.contentType == ContentType.BOORU
+}
+
 internal fun ReaderPage.isBooru(): Boolean {
-	return (source.unwrap() as? MangaParserSource)?.contentType == ContentType.BOORU
-}
-
-internal fun ReaderPage.isBooruGif(): Boolean {
-	return isBooru() && url.looksLikeGif()
-}
-
-internal fun ReaderPage.isBooruVideo(): Boolean {
-	return isBooru() && url.looksLikeVideo()
+	// source check ALWAYS comes first: extensions alone must never be trusted,
+	// otherwise ordinary comic pages with gif/video in the URL would be gated
+	return source.isBooruSource()
 }
 
 internal fun ReaderPage.isBooruMedia(): Boolean {
-	return isBooruGif() || isBooruVideo()
+	return isBooru() && url.looksLikeMedia()
+}
+
+/** Single gate for media detection: booru source check first, URL check second. */
+internal fun MangaPage.isBooruMedia(): Boolean {
+	return source.isBooruSource() && url.looksLikeMedia()
 }
