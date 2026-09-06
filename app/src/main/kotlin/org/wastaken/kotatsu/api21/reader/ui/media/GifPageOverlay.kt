@@ -1,9 +1,12 @@
 package org.wastaken.kotatsu.api21.reader.ui.media
 
+import android.graphics.drawable.Animatable
+import android.graphics.drawable.Drawable
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.vectordrawable.graphics.drawable.Animatable2Compat
 import coil3.asDrawable
 import coil3.request.CachePolicy
 import coil3.request.ErrorResult
@@ -50,6 +53,9 @@ class GifPageOverlay(
 
 	private var loadJob: Job? = null
 
+	/** Last decoded animation; stopped explicitly on reset (frame callbacks do not stop on their own). */
+	private var animatedDrawable: Drawable? = null
+
 	/** @return true if this overlay handles the page and the normal page load must be suppressed. */
 	fun onBind(page: ReaderPage): Boolean {
 		reset()
@@ -75,7 +81,11 @@ class GifPageOverlay(
 	private fun reset() {
 		loadJob?.cancel()
 		loadJob = null
-		// drop the MovieDrawable and its decoded frames immediately
+		// stop the animation loop first (schedules frame callbacks on the main loop),
+		// then drop the MovieDrawable and its decoded frames immediately
+		(animatedDrawable as? Animatable2Compat)?.stop()
+		(animatedDrawable as? Animatable)?.stop()
+		animatedDrawable = null
 		binding.gifImageView.setImageDrawable(null)
 		binding.root.isGone = true
 	}
@@ -89,8 +99,7 @@ class GifPageOverlay(
 			binding.progressGif.isVisible = true
 			try {
 				val uri = loader.loadPage(page.toMangaPage(), force = false)
-				// no view target: Coil decodes bounded by the display size, and the
-				// drawable is set manually so the MovieDrawable starts animating
+				// no view target: Coil decodes bounded by the display size
 				val request = ImageRequest.Builder(binding.root.context)
 					.data(uri)
 					.lifecycle(lifecycleOwner.lifecycle)
@@ -98,7 +107,16 @@ class GifPageOverlay(
 					.build()
 				when (val result = coil.execute(request)) {
 					is SuccessResult -> {
-						binding.gifImageView.setImageDrawable(result.image.asDrawable(binding.root.resources))
+						val drawable = result.image.asDrawable(binding.root.resources)
+						binding.gifImageView.setImageDrawable(drawable)
+						// Coil starts animations only through its own ImageViewTarget
+						// pipeline; with a raw execute() result nobody calls start()
+						// and the MovieDrawable would sit on frame 0 forever
+						when (drawable) {
+							is Animatable2Compat -> drawable.start()
+							is Animatable -> drawable.start()
+						}
+						animatedDrawable = drawable
 						binding.panelGif.isGone = true
 						binding.gifImageView.isVisible = true
 					}

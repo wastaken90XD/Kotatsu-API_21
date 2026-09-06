@@ -558,8 +558,9 @@ class VideoPageOverlay(
 		if (packageName != null) {
 			intent.setPackage(packageName)
 		}
-		// proper player metadata: external apps show the file name instead of the raw URL
-		// (package visibility rules do not apply: this fork targets API 21)
+		// proper player metadata: external apps show the file name instead of the raw URL.
+		// resolveActivity with a fixed package is unfiltered here because the manifest
+		// holds QUERY_ALL_PACKAGES (Android 11 package visibility would otherwise hide VLC)
 		intent.putExtra("title", url.urlFileName())
 		val context = binding.root.context
 		return if (intent.resolveActivity(context.packageManager) != null) {
