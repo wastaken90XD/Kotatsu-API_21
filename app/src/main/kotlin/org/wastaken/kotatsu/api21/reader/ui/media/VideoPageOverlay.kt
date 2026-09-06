@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
+import okio.buffer
 import okio.sink
 import okio.source
 import org.koitharu.kotatsu.parsers.model.MangaPage
