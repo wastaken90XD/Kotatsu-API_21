@@ -43,18 +43,55 @@ internal data class StreamVariant(
 	val url: String,
 )
 
+/** Display name of the file a page URL points at ("abc123.mp4"), without query/fragment. */
+internal fun String.urlFileName(): String {
+	return substringBefore('#').substringBefore('?').substringAfterLast('/')
+}
+
 /**
  * Stream-quality variants for a booru video page URL.
  *
- * Booru page data from the parser model carries only the original file URL (plus
- * the still-image preview), so today only the original stream is known. Some
- * booru engines do serve lower-quality siblings (e.g. 720p/480p samples) — for
- * those, derive the variant URLs from the URL pattern here. The video overlay
- * automatically shows a quality picker as soon as this returns more than one
- * entry; with a single entry the picker step is skipped.
+ * The parser model only exposes the original file URL, but several booru CDN
+ * patterns are deterministic enough to derive the quality siblings the source
+ * itself publishes; those providers live below. The video overlay automatically
+ * shows a quality picker as soon as more than one variant is returned.
  */
 internal fun String.videoStreamVariants(): List<StreamVariant> {
+	danbooruVideoVariants()?.let { return it }
 	return listOf(StreamVariant("Original (auto)", this))
+}
+
+private const val DANBOORU_CDN_HOST = "cdn.donmai.us"
+private const val DANBOORU_ORIGINAL_SEGMENT = "/original/"
+private val DANBOORU_VIDEO_VARIANT_TAGS = listOf("720p", "480p", "360p")
+
+/**
+ * Danbooru media assets are published as
+ *   https://cdn.donmai.us/original/{h1}/{h2}/{file}.{ext}
+ * with server-generated video variants (always H.264 mp4) at
+ *   https://cdn.donmai.us/{720p|480p|360p}/{h1}/{h2}/{file}.mp4
+ */
+private fun String.danbooruVideoVariants(): List<StreamVariant>? {
+	val clean = substringBefore('#').substringBefore('?')
+	val schemeSep = clean.indexOf("://").takeIf { it > 0 } ?: return null
+	val hostEnd = clean.indexOf('/', startIndex = schemeSep + 3).takeIf { it > 0 } ?: return null
+	val host = clean.substring(schemeSep + 3, hostEnd)
+	if (!host.equals(DANBOORU_CDN_HOST, ignoreCase = true)) {
+		return null
+	}
+	val path = clean.substring(hostEnd) // "/original/xx/yy/file.mp4"
+	if (!path.startsWith(DANBOORU_ORIGINAL_SEGMENT) || !looksLikeVideo()) {
+		return null
+	}
+	val baseOrigin = clean.substring(0, hostEnd)
+	val suffix = path.substring(DANBOORU_ORIGINAL_SEGMENT.length) // "xx/yy/file.mp4"
+	val baseName = suffix.substringBeforeLast('.')
+	return buildList {
+		add(StreamVariant("Original", clean))
+		for (tag in DANBOORU_VIDEO_VARIANT_TAGS) {
+			add(StreamVariant(tag, "$baseOrigin/$tag/$baseName.mp4"))
+		}
+	}
 }
 
 internal fun ReaderPage.isBooru(): Boolean {

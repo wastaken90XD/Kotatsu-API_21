@@ -123,6 +123,10 @@
 	<string name="video_saved">Video saved</string>
 	<string name="select_quality">Select quality</string>
 	<string name="no_download_folder">No download folder configured in settings</string>
+	<string name="play">Play</string>
+	<string name="video_skip_backward">-10 s</string>
+	<string name="video_skip_forward">+10 s</string>
+	<string name="video_loop">Loop</string>
 	<string name="pages_save_original_title">Save original image</string>
 	<string name="pages_save_original_summary">Download the untouched original file instead of the cached or proxy-optimized version</string>
 	<string name="share_image">Share image</string>
