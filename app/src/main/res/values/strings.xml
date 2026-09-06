@@ -114,6 +114,7 @@
 	<string name="page_saved">Page saved</string>
 	<string name="pages_saved">Pages saved</string>
 	<string name="save_image">Save image</string>
+	<string name="load_gif">Load GIF</string>
 	<string name="pages_save_original_title">Save original image</string>
 	<string name="pages_save_original_summary">Download the untouched original file instead of the cached or proxy-optimized version</string>
 	<string name="share_image">Share image</string>

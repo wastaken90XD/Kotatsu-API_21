@@ -24,10 +24,12 @@ import org.wastaken.kotatsu.api21.core.util.ext.getDisplayMessage
 import org.wastaken.kotatsu.api21.core.util.ext.isLowRamDevice
 import org.wastaken.kotatsu.api21.core.util.ext.isSerializable
 import org.wastaken.kotatsu.api21.core.util.ext.observe
+import org.wastaken.kotatsu.api21.databinding.LayoutBooruGifOverlayBinding
 import org.wastaken.kotatsu.api21.databinding.LayoutPageInfoBinding
 import org.koitharu.kotatsu.parsers.util.ifZero
 import org.wastaken.kotatsu.api21.reader.domain.PageLoader
 import org.wastaken.kotatsu.api21.reader.ui.config.ReaderSettings
+import org.wastaken.kotatsu.api21.reader.ui.media.GifPageOverlay
 import org.wastaken.kotatsu.api21.reader.ui.pager.vm.PageState
 import org.wastaken.kotatsu.api21.reader.ui.pager.vm.PageViewModel
 import org.wastaken.kotatsu.api21.reader.ui.pager.webtoon.WebtoonHolder
@@ -49,6 +51,7 @@ abstract class BasePageHolder<B : ViewBinding>(
 		isWebtoon = this is WebtoonHolder,
 	)
 	protected val bindingInfo = LayoutPageInfoBinding.bind(binding.root)
+	private val gifOverlay = GifPageOverlay(LayoutBooruGifOverlayBinding.bind(binding.root), loader, this)
 	protected abstract val ssiv: SubsamplingScaleImageView
 
 	protected val settings: ReaderSettings
@@ -99,7 +102,14 @@ abstract class BasePageHolder<B : ViewBinding>(
 
 	fun bind(data: ReaderPage) {
 		boundData = data
-		viewModel.onBind(data.toMangaPage())
+		if (gifOverlay.onBind(data)) {
+			// media pages (gif/video) are explicit-load only: the automatic page
+			// pipeline is suppressed and the overlay drives everything from here
+			viewModel.onRecycle()
+			ssiv.recycle()
+		} else {
+			viewModel.onBind(data.toMangaPage())
+		}
 		onBind(data)
 	}
 
@@ -137,6 +147,7 @@ abstract class BasePageHolder<B : ViewBinding>(
 
 	@CallSuper
 	open fun onRecycled() {
+		gifOverlay.onRecycled()
 		viewModel.onRecycle()
 		ssiv.recycle()
 	}
@@ -151,6 +162,12 @@ abstract class BasePageHolder<B : ViewBinding>(
 	final override fun onLowMemory() = onTrimMemory(TRIM_MEMORY_COMPLETE)
 
 	protected open fun onStateChanged(state: PageState) {
+		if (gifOverlay.isHandling) {
+			// media pages are driven by their overlay, not by the page state flow
+			bindingInfo.layoutError.isGone = true
+			bindingInfo.layoutProgress.isGone = true
+			return
+		}
 		bindingInfo.layoutError.isVisible = state is PageState.Error
 		bindingInfo.layoutProgress.isGone = state.isFinalState()
 		val progress = (state as? PageState.Loading)?.progress ?: -1
