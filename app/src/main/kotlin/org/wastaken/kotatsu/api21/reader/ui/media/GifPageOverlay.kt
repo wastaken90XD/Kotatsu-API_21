@@ -4,12 +4,12 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import coil3.asDrawable
 import coil3.request.CachePolicy
 import coil3.request.ErrorResult
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.lifecycle
-import coil3.util.CoilUtils
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CancellationException
@@ -73,7 +73,6 @@ class GifPageOverlay(
 	private fun reset() {
 		loadJob?.cancel()
 		loadJob = null
-		CoilUtils.dispose(binding.gifImageView)
 		// drop the MovieDrawable and its decoded frames immediately
 		binding.gifImageView.setImageDrawable(null)
 		binding.root.isGone = true
@@ -88,14 +87,16 @@ class GifPageOverlay(
 			binding.progressGif.isVisible = true
 			try {
 				val uri = loader.loadPage(page.toMangaPage(), force = false)
+				// no view target: Coil decodes bounded by the display size, and the
+				// drawable is set manually so the MovieDrawable starts animating
 				val request = ImageRequest.Builder(binding.root.context)
 					.data(uri)
 					.lifecycle(lifecycleOwner.lifecycle)
 					.memoryCachePolicy(CachePolicy.DISABLED)
-					.target(binding.gifImageView)
 					.build()
 				when (val result = coil.execute(request)) {
 					is SuccessResult -> {
+						binding.gifImageView.setImageDrawable(result.image.asDrawable(binding.root.resources))
 						binding.panelGif.isGone = true
 						binding.gifImageView.isVisible = true
 					}
