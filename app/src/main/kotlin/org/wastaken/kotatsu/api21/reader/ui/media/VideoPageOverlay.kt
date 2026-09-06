@@ -31,14 +31,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
-import okio.buffer
-import okio.sink
-import okio.source
 import org.koitharu.kotatsu.parsers.model.MangaPage
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.util.ext.getDisplayMessage
 import org.wastaken.kotatsu.api21.core.util.ext.isNetworkUri
-import org.wastaken.kotatsu.api21.core.util.ext.writeAllCancellable
 import org.wastaken.kotatsu.api21.databinding.LayoutBooruVideoOverlayBinding
 import org.wastaken.kotatsu.api21.reader.domain.PageLoader
 import org.wastaken.kotatsu.api21.reader.ui.pager.ReaderPage
@@ -490,9 +486,9 @@ class VideoPageOverlay(
 	private suspend fun copyTo(sourceUri: Uri, destination: Uri) = runInterruptible(Dispatchers.IO) {
 		val out = appContext.contentResolver.openOutputStream(destination)
 			?: throw IOException("Cannot open output stream for $destination")
-		out.sink().buffer().use { sink ->
-			sourceUri.toFile().source().use { input ->
-				sink.writeAllCancellable(input)
+		out.use { output ->
+			sourceUri.toFile().inputStream().use { input ->
+				input.copyTo(output)
 			}
 		}
 	}
