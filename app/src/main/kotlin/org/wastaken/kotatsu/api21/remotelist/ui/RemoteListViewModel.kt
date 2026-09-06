@@ -20,8 +20,22 @@ import kotlinx.coroutines.plus
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.model.MangaSource
 import org.wastaken.kotatsu.api21.core.model.distinctById
+import org.wastaken.kotatsu.api21.core.model.unwrap
 import org.wastaken.kotatsu.api21.core.parser.MangaDataRepository
 import org.wastaken.kotatsu.api21.core.parser.MangaRepository
+import org.wastaken.kotatsu.api21.core.prefs.AppSettings
+import org.wastaken.kotatsu.api21.core.prefs.ListMode
+import org.wastaken.kotatsu.api21.core.util.ext.MutableEventFlow
+import org.wastaken.kotatsu.api21.core.util.ext.call
+import org.wastaken.kotatsu.api21.core.util.ext.getCauseUrl
+import org.wastaken.kotatsu.api21.core.util.ext.printStackTraceDebug
+import org.wastaken.kotatsu.api21.explore.data.MangaSourcesRepository
+import org.wastaken.kotatsu.api21.explore.domain.ExploreRepository
+import org.wastaken.kotatsu.api21.filter.ui.FilterCoordinator
+import org.wastaken.kotatsu.api21.list.domain.MangaListMapper
+import org.wastaken.kotatsu.api21.list.ui.MangaListViewModel
+import org.wastaken.kotatsu.api21.list.ui.model.BooruGridModel
+import org.wastaken.kotatsu.api21.list.ui.model.ButtonFooter
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.prefs.ListMode
 import org.wastaken.kotatsu.api21.core.util.ext.MutableEventFlow
@@ -40,7 +54,9 @@ import org.wastaken.kotatsu.api21.list.ui.model.LoadingFooter
 import org.wastaken.kotatsu.api21.list.ui.model.LoadingState
 import org.wastaken.kotatsu.api21.list.ui.model.toErrorFooter
 import org.wastaken.kotatsu.api21.list.ui.model.toErrorState
+import org.koitharu.kotatsu.parsers.model.ContentType
 import org.koitharu.kotatsu.parsers.model.Manga
+import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.util.sizeOrZero
 import javax.inject.Inject
 
@@ -55,12 +71,20 @@ open class RemoteListViewModel @Inject constructor(
 	protected val mangaListMapper: MangaListMapper,
 	private val exploreRepository: ExploreRepository,
 	sourcesRepository: MangaSourcesRepository,
-	mangaDataRepository: MangaDataRepository
+	private val mangaDataRepository: MangaDataRepository
 ) : MangaListViewModel(settings, mangaDataRepository), FilterCoordinator.Owner {
 
 	val source = MangaSource(savedStateHandle[RemoteListFragment.ARG_SOURCE])
 	val isRandomLoading = MutableStateFlow(false)
 	val onOpenManga = MutableEventFlow<Manga>()
+
+	/**
+	 * Booru sources get the square-thumbnail grid treatment (see BooruGridAdapter):
+	 * their posts are standalone images, not manga covers.
+	 */
+	val isBooru: Boolean by lazy(LazyThreadSafetyMode.NONE) {
+		(source.unwrap() as? MangaParserSource)?.contentType == ContentType.BOORU
+	}
 
 	protected val repository = mangaRepositoryFactory.create(source)
 	private val mangaList = MutableStateFlow<List<Manga>?>(null)
@@ -178,7 +202,21 @@ open class RemoteListViewModel @Inject constructor(
 		destination: MutableCollection<in ListModel>,
 		manga: Collection<Manga>,
 		mode: ListMode
-	) = mangaListMapper.toListModelList(destination, manga, mode)
+	) {
+		if (isBooru) {
+			mapBooruList(destination, manga)
+		} else {
+			mangaListMapper.toListModelList(destination, manga, mode)
+		}
+	}
+
+	private suspend fun mapBooruList(
+		destination: MutableCollection<in ListModel>,
+		manga: Collection<Manga>,
+	) {
+		val overrides = mangaDataRepository.getOverrides()
+		manga.mapTo(destination) { BooruGridModel(it, overrides[it.id]) }
+	}
 
 	protected open fun getFooter(): ButtonFooter? {
 		val filter = filterCoordinator.snapshot().listFilter

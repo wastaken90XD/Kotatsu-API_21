@@ -7,6 +7,7 @@ import android.view.MenuItem
 import android.view.View
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.viewModels
+import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChangedBy
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.drop
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.model.getTitle
 import org.wastaken.kotatsu.api21.core.nav.router
+import org.wastaken.kotatsu.api21.core.prefs.ListMode
 import org.wastaken.kotatsu.api21.core.ui.list.ListSelectionController
 import org.wastaken.kotatsu.api21.core.ui.util.MenuInvalidator
 import org.wastaken.kotatsu.api21.core.util.ext.addMenuProvider
@@ -25,6 +27,10 @@ import org.wastaken.kotatsu.api21.core.util.ext.withArgs
 import org.wastaken.kotatsu.api21.databinding.FragmentListBinding
 import org.wastaken.kotatsu.api21.filter.ui.FilterCoordinator
 import org.wastaken.kotatsu.api21.list.ui.MangaListFragment
+import org.wastaken.kotatsu.api21.list.ui.adapter.BOORU_GRID_SPAN
+import org.wastaken.kotatsu.api21.list.ui.adapter.BooruGridAdapter
+import org.wastaken.kotatsu.api21.list.ui.adapter.ListItemType
+import org.wastaken.kotatsu.api21.list.ui.adapter.MangaListAdapter
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.wastaken.kotatsu.api21.search.domain.SearchKind
 
@@ -32,6 +38,9 @@ import org.wastaken.kotatsu.api21.search.domain.SearchKind
 class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	override val viewModel by viewModels<RemoteListViewModel>()
+
+	private var booruAdapter: BooruGridAdapter? = null
+	private val booruSpanSizeLookup = BooruSpanSizeLookup()
 
 	override val filterCoordinator: FilterCoordinator
 		get() = viewModel.filterCoordinator
@@ -47,6 +56,51 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 			.observe(viewLifecycleOwner) {
 				activity?.invalidateMenu()
 			}
+	}
+
+	override fun onCreateAdapter(): MangaListAdapter {
+		return if (viewModel.isBooru) {
+			// booru sources are browsed as a fixed square-thumbnail grid (see BooruGridAdapter);
+			// all other sources keep the standard manga tiles untouched
+			BooruGridAdapter(this).also { booruAdapter = it }
+		} else {
+			super.onCreateAdapter()
+		}
+	}
+
+	override fun onListModeChanged(mode: ListMode) {
+		if (!viewModel.isBooru) {
+			super.onListModeChanged(mode)
+			return
+		}
+		with(requireViewBinding().recyclerView) {
+			layoutManager = GridLayoutManager(context, BOORU_GRID_SPAN).also {
+				it.spanSizeLookup = booruSpanSizeLookup
+			}
+			setItemViewCacheSize(BOORU_VIEW_CACHE_SIZE)
+		}
+	}
+
+	override fun onGridScaleChanged(scale: Float) {
+		// the booru grid span is fixed: the grid size setting does not apply to it
+		if (!viewModel.isBooru) {
+			super.onGridScaleChanged(scale)
+		}
+	}
+
+	override fun onDestroyView() {
+		booruAdapter = null
+		super.onDestroyView()
+	}
+
+	private inner class BooruSpanSizeLookup : GridLayoutManager.SpanSizeLookup() {
+
+		override fun getSpanSize(position: Int): Int {
+			return when (booruAdapter?.getItemViewType(position)) {
+				ListItemType.BOORU_GRID.ordinal -> 1
+				else -> BOORU_GRID_SPAN
+			}
+		}
 	}
 
 	override fun onScrolledToEnd() {
@@ -140,6 +194,9 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 	companion object {
 
 		const val ARG_SOURCE = "provider"
+
+		/** Extra recycled views kept around to avoid rebinding on slow scroll (weak hardware). */
+		private const val BOORU_VIEW_CACHE_SIZE = 6
 
 		fun newInstance(source: MangaSource) = RemoteListFragment().withArgs(1) {
 			putString(ARG_SOURCE, source.name)

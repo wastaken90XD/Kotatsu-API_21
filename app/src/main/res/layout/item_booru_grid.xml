@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Square thumbnail tile for booru sources (see BooruGridItemAD).
+	1:1 aspect ratio is enforced by CoverImageView aspectRation* attributes:
+	booru thumbnails have wildly varying aspect ratios and unknown-at-load-time heights
+	cause layout jumps and re-measure passes on weak hardware.
+-->
+<FrameLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:layout_margin="2dp"
+	android:background="@drawable/custom_selectable_item_background"
+	android:clipChildren="false"
+	tools:layout_width="140dp">
+
+	<org.wastaken.kotatsu.api21.image.ui.CoverImageView
+		android:id="@+id/imageView_cover"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:background="?colorSurfaceContainer"
+		android:scaleType="centerCrop"
+		app:allowRgb565="true"
+		app:aspectRationHeight="1"
+		app:aspectRationWidth="1"
+		app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Kotatsu.Cover"
+		tools:ignore="ContentDescription"
+		tools:src="@tools:sample/backgrounds/scenic[5]" />
+
+</FrameLayout>
