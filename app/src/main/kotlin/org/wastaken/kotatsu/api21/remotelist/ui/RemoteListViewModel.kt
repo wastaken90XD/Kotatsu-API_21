@@ -43,6 +43,7 @@ import org.wastaken.kotatsu.api21.list.ui.model.LoadingState
 import org.wastaken.kotatsu.api21.list.ui.model.toErrorFooter
 import org.wastaken.kotatsu.api21.list.ui.model.toErrorState
 import org.wastaken.kotatsu.api21.reader.ui.PageSaveHelper
+import org.wastaken.kotatsu.api21.reader.ui.media.isBooruSource
 import android.net.Uri
 import org.koitharu.kotatsu.parsers.model.ContentType
 import org.koitharu.kotatsu.parsers.model.Manga
@@ -70,12 +71,17 @@ open class RemoteListViewModel @Inject constructor(
 	val onImageSaved = MutableEventFlow<Collection<Uri>>()
 
 	/**
-	 * Long-press save on the booru grid (grid-only; non-booru never calls this).
-	 * Same resolution pipeline as the details-screen save action: the post's page is
-	 * fetched fresh so the raw image lands in the download folder, honoring the
-	 * (booru-only) original-bytes preference inside PageSaveHelper.
+	 * Long-press save on the booru grid. STRICTLY booru-only: the internal guard
+	 * makes this a no-op for every non-booru source, even if a future caller
+	 * forgets to check (same rule as PageSaveHelper.isSaveOriginalForBooru).
+	 * Uses the details screen's resolution pipeline (getDetails -> chapter -> page
+	 * -> PageSaveHelper.Task), so source headers, the download folder picker and
+	 * the original-bytes preference behave identically for both entry points.
 	 */
 	fun saveBooruImage(pageSaveHelper: PageSaveHelper, manga: Manga) {
+		if (!manga.source.isBooruSource()) {
+			return
+		}
 		launchLoadingJob(Dispatchers.Default) {
 			val repository = mangaRepositoryFactory.create(manga.source)
 			val details = repository.getDetails(manga)
