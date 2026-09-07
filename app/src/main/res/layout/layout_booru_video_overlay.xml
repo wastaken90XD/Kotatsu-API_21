@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 	Explicit-load video overlay for booru reader pages (see VideoPageOverlay).
-	The root is not clickable, so outside the player/controls taps fall through
-	to the reader gestures underneath. The VideoView itself is created
-	programmatically with the application context (API 21 SubtitleController
-	leak, see VideoPageOverlay) and attached to videoContainer at index 0, so
-	the controller layer defined here always stays on top.
+	Deliberately identical in shape to the GIF overlay: a hidden root, a static
+	placeholder card and a progress indicator. No player UI lives in the reader.
+	The root is not clickable, so outside the button taps fall through
+	to the reader gestures underneath.
 -->
 <FrameLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
@@ -17,102 +16,6 @@
 	android:clickable="false"
 	android:visibility="gone"
 	tools:visibility="visible">
-
-	<FrameLayout
-		android:id="@+id/videoContainer"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:visibility="gone"
-		tools:visibility="visible">
-
-		<ProgressBar
-			android:id="@+id/progress_buffering"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:visibility="gone"
-			tools:visibility="visible" />
-
-		<LinearLayout
-			android:id="@+id/controlsBar"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:layout_gravity="bottom"
-			android:background="?attr/colorSurface"
-			android:gravity="center_vertical"
-			android:orientation="horizontal"
-			android:paddingStart="@dimen/margin_small"
-			android:paddingEnd="@dimen/margin_small"
-			android:visibility="gone"
-			tools:visibility="visible">
-
-			<ImageButton
-				android:id="@+id/button_play_pause"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:background="?attr/selectableItemBackgroundBorderless"
-				android:contentDescription="@string/play"
-				android:src="@drawable/ic_play"
-				tools:ignore="TouchTargetSizeCheck" />
-
-			<TextView
-				android:id="@+id/text_position"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:paddingStart="@dimen/margin_small"
-				android:text="00:00"
-				tools:ignore="HardcodedText" />
-
-			<SeekBar
-				android:id="@+id/seek_video"
-				android:layout_width="0dp"
-				android:layout_height="wrap_content"
-				android:layout_weight="1" />
-
-			<TextView
-				android:id="@+id/text_duration"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:paddingEnd="@dimen/margin_small"
-				android:text="00:00"
-				tools:ignore="HardcodedText" />
-
-			<com.google.android.material.button.MaterialButton
-				android:id="@+id/button_skip_back"
-				style="@style/Widget.Material3.Button.TextButton"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:minWidth="0dp"
-				android:text="@string/video_skip_backward" />
-
-			<com.google.android.material.button.MaterialButton
-				android:id="@+id/button_skip_forward"
-				style="@style/Widget.Material3.Button.TextButton"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:minWidth="0dp"
-				android:text="@string/video_skip_forward" />
-
-			<com.google.android.material.button.MaterialButton
-				android:id="@+id/button_loop"
-				style="@style/Widget.Material3.Button.TextButton"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:minWidth="0dp"
-				android:text="@string/video_loop" />
-
-			<com.google.android.material.button.MaterialButton
-				android:id="@+id/button_speed"
-				style="@style/Widget.Material3.Button.TextButton"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:minWidth="0dp"
-				android:text="1x"
-				tools:ignore="HardcodedText" />
-
-		</LinearLayout>
-
-	</FrameLayout>
 
 	<com.google.android.material.card.MaterialCardView
 		android:id="@+id/panelVideo"

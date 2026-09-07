@@ -4,51 +4,65 @@ import android.graphics.drawable.Animatable
 import android.graphics.drawable.Drawable
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.vectordrawable.graphics.drawable.Animatable2Compat
 import coil3.asDrawable
-import coil3.request.CachePolicy
-import coil3.request.ErrorResult
-import coil3.request.ImageRequest
-import coil3.request.SuccessResult
-import coil3.request.lifecycle
+import coil3.decode.ImageSource
+import coil3.gif.GifDecoder
+import coil3.request.Options
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okio.FileSystem
+import org.koitharu.kotatsu.parsers.util.await
+import org.koitharu.kotatsu.parsers.util.requireBody
+import org.wastaken.kotatsu.api21.core.util.ext.ensureSuccess
 import org.wastaken.kotatsu.api21.core.util.ext.getDisplayMessage
 import org.wastaken.kotatsu.api21.databinding.LayoutBooruGifOverlayBinding
 import org.wastaken.kotatsu.api21.reader.domain.PageLoader
 import org.wastaken.kotatsu.api21.reader.ui.pager.ReaderPage
 
 /**
- * Explicit-load GIF support for booru reader pages.
+ * Explicit-load GIF support for booru reader pages. **Booru sources only**
+ * (source check first, always — see BooruMedia.kt).
  *
- * GIFs must never load or animate automatically: when a booru page URL ends in
- * .gif this overlay shows a static placeholder with a "Load GIF" button and the
- * normal page pipeline is suppressed (no prefetch, no page download). The GIF is
- * fetched (through the regular page loader, so source headers / proxy / fallback
- * apply) and animated inline only after an explicit tap. State is per-binding:
- * navigating away and back resets to the static placeholder by design — decoded
- * GIF frames are large and must not be kept around on low-RAM devices.
- * Memory-cache for GIF requests is disabled for the same reason.
+ * GIFs never load or animate automatically: a static placeholder with a
+ * "Load GIF" button replaces the page until the user's explicit tap, and the
+ * normal image pipeline stays suppressed (no prefetch, no page download).
+ *
+ * Nothing is persisted for playback: the GIF is streamed over OkHttp with the
+ * source's headers (no image proxy — it cannot optimize animations anyway) and
+ * decoded straight from the network stream; the response body is read exactly
+ * once by [GifDecoder] (`Movie.decodeStream` is a single sequential pass, so a
+ * streaming [ImageSource] is enough and [ImageSource.file] is never called,
+ * which means no temporary file is created). The full file exists on the device
+ * ONLY when the user explicitly downloads it elsewhere. Decoded frames are
+ * dropped on rebind/recycle by design (low-RAM policy).
+ *
+ * The raw [GifDecoder] path is also what the base app already uses below API
+ * 28, so this is the oldest-compatible route by construction. The resulting
+ * MovieDrawable is started/stopped explicitly (Coil normally does this inside
+ * its own ViewTarget pipeline, which we bypass on purpose).
  */
 class GifPageOverlay(
 	private val binding: LayoutBooruGifOverlayBinding,
-	private val loader: PageLoader,
 	private val lifecycleOwner: LifecycleOwner,
-) {
+) : DefaultLifecycleObserver {
 
 	var isHandling = false
 		private set
 
-	private val coil by lazy(LazyThreadSafetyMode.NONE) {
+	private val entryPoint: ReaderMediaEntryPoint by lazy(LazyThreadSafetyMode.NONE) {
 		EntryPointAccessors.fromApplication(
 			binding.root.context.applicationContext,
 			ReaderMediaEntryPoint::class.java,
-		).imageLoader()
+		)
 	}
 
 	private var loadJob: Job? = null
@@ -56,11 +70,14 @@ class GifPageOverlay(
 	/** Last decoded animation; stopped explicitly on reset (frame callbacks do not stop on their own). */
 	private var animatedDrawable: Drawable? = null
 
+	init {
+		lifecycleOwner.lifecycle.addObserver(this)
+	}
+
 	/** @return true if this overlay handles the page and the normal page load must be suppressed. */
 	fun onBind(page: ReaderPage): Boolean {
 		reset()
-		// source check comes first, always (see BooruMedia.kt): a non-booru page
-		// with a gif-looking URL is just an ordinary page for this overlay
+		// source check comes first, always (see BooruMedia.kt)
 		isHandling = page.isBooru() && page.url.looksLikeGif()
 		if (!isHandling) {
 			return false
@@ -78,16 +95,39 @@ class GifPageOverlay(
 		reset()
 	}
 
+	override fun onPause(owner: LifecycleOwner) {
+		stopAnimation()
+	}
+
+	override fun onStop(owner: LifecycleOwner) {
+		stopAnimation()
+	}
+
+	override fun onResume(owner: LifecycleOwner) {
+		val drawable = animatedDrawable ?: return
+		if (binding.gifImageView.isVisible) {
+			(drawable as? Animatable2Compat)?.start()
+			(drawable as? Animatable)?.start()
+		}
+	}
+
+	override fun onDestroy(owner: LifecycleOwner) {
+		reset()
+		lifecycleOwner.lifecycle.removeObserver(this)
+	}
+
 	private fun reset() {
 		loadJob?.cancel()
 		loadJob = null
-		// stop the animation loop first (schedules frame callbacks on the main loop),
-		// then drop the MovieDrawable and its decoded frames immediately
-		(animatedDrawable as? Animatable2Compat)?.stop()
-		(animatedDrawable as? Animatable)?.stop()
+		stopAnimation()
 		animatedDrawable = null
 		binding.gifImageView.setImageDrawable(null)
 		binding.root.isGone = true
+	}
+
+	private fun stopAnimation() {
+		(animatedDrawable as? Animatable2Compat)?.stop()
+		(animatedDrawable as? Animatable)?.stop()
 	}
 
 	private fun load(page: ReaderPage) {
@@ -98,31 +138,30 @@ class GifPageOverlay(
 			binding.buttonLoadGif.isGone = true
 			binding.progressGif.isVisible = true
 			try {
-				val uri = loader.loadPage(page.toMangaPage(), force = false)
-				// no view target: Coil decodes bounded by the display size
-				val request = ImageRequest.Builder(binding.root.context)
-					.data(uri)
-					.lifecycle(lifecycleOwner.lifecycle)
-					.memoryCachePolicy(CachePolicy.DISABLED)
-					.build()
-				when (val result = coil.execute(request)) {
-					is SuccessResult -> {
-						val drawable = result.image.asDrawable(binding.root.resources)
-						binding.gifImageView.setImageDrawable(drawable)
-						// Coil starts animations only through its own ImageViewTarget
-						// pipeline; with a raw execute() result nobody calls start()
-						// and the MovieDrawable would sit on frame 0 forever
-						when (drawable) {
-							is Animatable2Compat -> drawable.start()
-							is Animatable -> drawable.start()
+				// network + decode are off-thread; nothing is written to any cache
+				val drawable = withContext(Dispatchers.Default) {
+					val request = PageLoader.createPageRequest(page.url, page.source)
+					entryPoint.okHttpClient().newCall(request).await().use { response ->
+						response.ensureSuccess()
+						response.requireBody().use { body ->
+							ImageSource(body.source(), FileSystem.SYSTEM).use { imageSource ->
+								GifDecoder(
+									imageSource,
+									Options(binding.root.context.applicationContext),
+								).decode().image.asDrawable(binding.root.resources)
+							}
 						}
-						animatedDrawable = drawable
-						binding.panelGif.isGone = true
-						binding.gifImageView.isVisible = true
 					}
-
-					is ErrorResult -> onError(result.throwable)
 				}
+				binding.gifImageView.setImageDrawable(drawable)
+				when (drawable) {
+					is Animatable2Compat -> drawable.start()
+					is Animatable -> drawable.start()
+				}
+				animatedDrawable = drawable
+				binding.panelGif.isGone = true
+				binding.progressGif.isGone = true
+				binding.gifImageView.isVisible = true
 			} catch (e: CancellationException) {
 				throw e
 			} catch (e: Throwable) {

@@ -61,14 +61,12 @@ abstract class BasePageHolder<B : ViewBinding>(
 		LayoutBooruGifOverlayBinding.bind(
 			requireNotNull(binding.root.findViewById(R.id.booru_gif_overlay_root)),
 		),
-		loader,
 		this,
 	)
 	private val videoOverlay = VideoPageOverlay(
 		LayoutBooruVideoOverlayBinding.bind(
 			requireNotNull(binding.root.findViewById(R.id.booru_video_overlay_root)),
 		),
-		loader,
 		this,
 	)
 	protected abstract val ssiv: SubsamplingScaleImageView
