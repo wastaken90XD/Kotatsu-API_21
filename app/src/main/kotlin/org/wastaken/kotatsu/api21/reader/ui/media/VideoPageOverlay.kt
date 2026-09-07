@@ -49,15 +49,17 @@ import java.util.Date
  * skip +/-10s, loop, playback speed (API 23+ only — [PlaybackParams] does not
  * exist below that), a buffering indicator and tap/double-tap gestures.
  *
- * Caching rule, strictly: playback is a direct HTTP(S) progressive stream from
- * the source — [MediaPlayer] buffers chunks in memory and the full file is
- * never written to app storage, never enters the image-proxy chain and never
- * touches the pages cache. Source-specific headers (referer / user agent) are
- * rebuilt here exactly the way
- * [org.wastaken.kotatsu.api21.core.network.CommonHeadersInterceptor] would add
- * them, because the media player does not run our OkHttp interceptors. The one
- * and only way a full video file lands on the device is "Download video" in the
- * Actions dialog (chunked download straight into the configured folder).
+ * Caching rule, strictly: playback streams through [VideoStreamProxy], a
+ * loopback relay that reads the source via OkHttp (source headers replicated
+ * here as [buildStreamHeaders], plus all interceptors, cookie jar and
+ * CloudFlare handling apply inside OkHttp) into a bounded memory-only
+ * read-ahead ring — the same architectural reason VLC/ExoPlayer play smoothly
+ * (decouple network from decode by seconds, not the framework player's tiny
+ * fixed HTTP cache). The full file is never written to app storage, never
+ * enters the image-proxy chain, never touches the pages cache or the OkHttp
+ * disk cache (no-store). The one and only way a full video file lands on the
+ * device is "Download video" in the Actions dialog (chunked download straight
+ * into the configured folder).
  *
  * "Actions" additionally keeps the previous destinations: Play in VLC (title
  * extra, transparent fallback to any external handler) and Open external.
@@ -76,6 +78,7 @@ class VideoPageOverlay(
 	private var currentStreamUrl: String? = null
 
 	private var mediaPlayer: MediaPlayer? = null
+	private var videoProxy: VideoStreamProxy? = null
 	private var surfaceReady = false
 	private var pendingStartUrl: String? = null
 	private var prepared = false
@@ -259,9 +262,14 @@ class VideoPageOverlay(
 			}
 		}
 		try {
-			// direct progressive HTTP(S) stream, chunked buffering in memory only,
-			// no disk cache, source headers replicated (see buildStreamHeaders)
-			mp.setDataSource(appContext, Uri.parse(streamUrl), buildStreamHeaders(page))
+			// smooth like real players: VLC/ExoPlayer decouple network from decode
+			// with a large read-ahead buffer; the framework player's own HTTP cache
+			// is tiny. The loopback relay gives it one (bounded memory ring, okio
+			// segments, zero disk, no-store upstream, Range-aware seeks).
+			val proxy = VideoStreamProxy(entryPoint.okHttpClient())
+			videoProxy = proxy
+			val localUrl = proxy.start(streamUrl, page.source, buildStreamHeaders(page))
+			mp.setDataSource(appContext, Uri.parse(localUrl))
 			mp.prepareAsync()
 		} catch (e: Exception) {
 			onPlaybackError()
@@ -328,6 +336,8 @@ class VideoPageOverlay(
 			runCatching { mp.release() }
 		}
 		mediaPlayer = null
+		videoProxy?.stop()
+		videoProxy = null
 		prepared = false
 		abandonAudioFocus()
 		focusPausedPlaying = false
