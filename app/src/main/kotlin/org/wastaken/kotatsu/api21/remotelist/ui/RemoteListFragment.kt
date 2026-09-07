@@ -26,14 +26,19 @@ import org.wastaken.kotatsu.api21.core.util.ext.observe
 import org.wastaken.kotatsu.api21.core.util.ext.observeEvent
 import org.wastaken.kotatsu.api21.core.util.ext.withArgs
 import org.wastaken.kotatsu.api21.databinding.FragmentListBinding
+import org.wastaken.kotatsu.api21.details.ui.pager.pages.PagesSavedObserver
 import org.wastaken.kotatsu.api21.filter.ui.FilterCoordinator
 import org.wastaken.kotatsu.api21.list.ui.MangaListFragment
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.list.ui.adapter.BooruGridAdapter
 import org.wastaken.kotatsu.api21.list.ui.adapter.ListItemType
 import org.wastaken.kotatsu.api21.list.ui.adapter.MangaListAdapter
+import org.wastaken.kotatsu.api21.list.ui.model.BooruGridModel
+import org.wastaken.kotatsu.api21.list.ui.model.MangaListModel
+import org.wastaken.kotatsu.api21.reader.ui.PageSaveHelper
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.wastaken.kotatsu.api21.search.domain.SearchKind
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
@@ -42,6 +47,11 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	private var booruAdapter: BooruGridAdapter? = null
 	private val booruSpanSizeLookup = BooruSpanSizeLookup()
+
+	@Inject
+	lateinit var pageSaveHelperFactory: PageSaveHelper.Factory
+
+	private lateinit var pageSaveHelper: PageSaveHelper
 
 	/** Live-applies the booru grid column setting (existing AppSettings listener pattern). */
 	private val booruColumnsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -53,12 +63,18 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 	override val filterCoordinator: FilterCoordinator
 		get() = viewModel.filterCoordinator
 
+	override fun onAttach(context: android.content.Context) {
+		super.onAttach(context)
+		pageSaveHelper = pageSaveHelperFactory.create(this)
+	}
+
 	override fun onViewBindingCreated(binding: FragmentListBinding, savedInstanceState: Bundle?) {
 		super.onViewBindingCreated(binding, savedInstanceState)
 		addMenuProvider(RemoteListMenuProvider())
 		addMenuProvider(MangaSearchMenuProvider(filterCoordinator, viewModel))
 		viewModel.isRandomLoading.observe(viewLifecycleOwner, MenuInvalidator(requireActivity()))
 		viewModel.onOpenManga.observeEvent(viewLifecycleOwner) { router.openDetails(it) }
+		viewModel.onImageSaved.observeEvent(viewLifecycleOwner, PagesSavedObserver(binding.recyclerView))
 		settings.subscribe(booruColumnsListener)
 		filterCoordinator.observe().distinctUntilChangedBy { it.listFilter.isEmpty() }
 			.drop(1)
@@ -137,6 +153,16 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	override fun onScrolledToEnd() {
 		viewModel.loadNextPage()
+	}
+
+	override fun onItemLongClick(item: MangaListModel, view: View): Boolean {
+		if (viewModel.isBooru && item is BooruGridModel) {
+			// booru grid: long-press saves the post's image directly (same pipeline
+			// as the details-screen save action; honors the original-bytes preference)
+			viewModel.saveBooruImage(pageSaveHelper, item.manga)
+			return true
+		}
+		return super.onItemLongClick(item, view)
 	}
 
 	override fun onCreateActionMode(

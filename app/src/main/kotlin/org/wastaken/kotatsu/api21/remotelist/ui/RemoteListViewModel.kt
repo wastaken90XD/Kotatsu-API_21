@@ -42,6 +42,8 @@ import org.wastaken.kotatsu.api21.list.ui.model.LoadingFooter
 import org.wastaken.kotatsu.api21.list.ui.model.LoadingState
 import org.wastaken.kotatsu.api21.list.ui.model.toErrorFooter
 import org.wastaken.kotatsu.api21.list.ui.model.toErrorState
+import org.wastaken.kotatsu.api21.reader.ui.PageSaveHelper
+import android.net.Uri
 import org.koitharu.kotatsu.parsers.model.ContentType
 import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
@@ -65,6 +67,30 @@ open class RemoteListViewModel @Inject constructor(
 	val source = MangaSource(savedStateHandle[RemoteListFragment.ARG_SOURCE])
 	val isRandomLoading = MutableStateFlow(false)
 	val onOpenManga = MutableEventFlow<Manga>()
+	val onImageSaved = MutableEventFlow<Collection<Uri>>()
+
+	/**
+	 * Long-press save on the booru grid (grid-only; non-booru never calls this).
+	 * Same resolution pipeline as the details-screen save action: the post's page is
+	 * fetched fresh so the raw image lands in the download folder, honoring the
+	 * (booru-only) original-bytes preference inside PageSaveHelper.
+	 */
+	fun saveBooruImage(pageSaveHelper: PageSaveHelper, manga: Manga) {
+		launchLoadingJob(Dispatchers.Default) {
+			val repository = mangaRepositoryFactory.create(manga.source)
+			val details = repository.getDetails(manga)
+			val chapter = checkNotNull(details.chapters?.firstOrNull()) { "No pages found" }
+			val pages = repository.getPages(chapter)
+			val page = checkNotNull(pages.firstOrNull()) { "No pages found" }
+			val task = PageSaveHelper.Task(
+				manga = manga,
+				chapterId = chapter.id,
+				pageNumber = 1,
+				page = page,
+			)
+			onImageSaved.call(pageSaveHelper.save(setOf(task)))
+		}
+	}
 
 	/**
 	 * Booru sources get the square-thumbnail grid treatment (see BooruGridAdapter):
