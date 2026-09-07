@@ -46,6 +46,7 @@
 		<ListPreference
 			android:defaultValue="3"
 			android:entries="@array/booru_grid_columns"
+			android:entryValues="@array/booru_grid_columns"
 			android:key="booru_grid_columns"
 			android:title="@string/booru_grid_columns"
 			app:useSimpleSummaryProvider="true" />
