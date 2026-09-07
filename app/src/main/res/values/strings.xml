@@ -115,6 +115,11 @@
 	<string name="pages_saved">Pages saved</string>
 	<string name="save_image">Save image</string>
 	<string name="load_gif">Load GIF</string>
+	<string name="video_actions">Actions</string>
+	<string name="video_loop">Loop</string>
+	<string name="video_skip_backward">-10s</string>
+	<string name="video_skip_forward">+10s</string>
+	<string name="play">Play</string>
 	<string name="load_video">Load video</string>
 	<string name="open_external">Open external</string>
 	<string name="play_in_vlc">Play in VLC</string>
