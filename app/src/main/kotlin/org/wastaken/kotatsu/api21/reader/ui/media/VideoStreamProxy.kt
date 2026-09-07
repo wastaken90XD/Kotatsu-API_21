@@ -241,6 +241,14 @@ class VideoStreamProxy(
 				return
 			}
 			val respBody = response.body
+			if (respBody == null) {
+				synchronized(lock) {
+					headersReady = true
+					producerFailed = true
+					lock.notifyAll()
+				}
+				return
+			}
 			body = respBody
 			synchronized(lock) {
 				upstreamStatus = response.code
