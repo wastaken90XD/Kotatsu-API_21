@@ -83,7 +83,8 @@ open class RemoteListViewModel @Inject constructor(
 			return
 		}
 		launchLoadingJob(Dispatchers.Default) {
-			val repository = mangaRepositoryFactory.create(manga.source)
+			// this VM's repository is already created for the grid's own source,
+			// which is the only source booru grid items can belong to
 			val details = repository.getDetails(manga)
 			val chapter = checkNotNull(details.chapters?.firstOrNull()) { "No pages found" }
 			val pages = repository.getPages(chapter)
