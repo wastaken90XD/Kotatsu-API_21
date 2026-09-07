@@ -124,7 +124,13 @@ interface AppModule {
 				.interceptorCoroutineContext(Dispatchers.Default)
 				.diskCache(diskCacheFactory)
 				.logger(if (BuildConfig.DEBUG) DebugLogger() else null)
-				.allowRgb565(context.isLowRamDevice())
+				// pre-26 bitmap pixels live on the dalvik/java heap directly: every reader
+				// page/gallery bitmap fragments it. Allowing RGB_565 there halves bitmap
+				// bytes and is the main lever against fragmentation OOMs on API 21-25
+				// devices (e.g. OkHttp bystander crashes like failed 8KB okio.Segment
+				// allocation with hundreds of MB heap room left). API 26+ pixels are
+				// native-side and unaffected, so restrict the trade-off to <26.
+				.allowRgb565(context.isLowRamDevice() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
 				.eventListener(captchaHandler)
 				.components {
 					add(
