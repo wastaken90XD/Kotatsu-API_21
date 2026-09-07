@@ -15,6 +15,7 @@ import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.core.util.ext.isNetworkUri
 import org.wastaken.kotatsu.api21.core.util.ext.isZipUri
 import org.wastaken.kotatsu.api21.core.util.ext.tryLaunch
+import org.wastaken.kotatsu.api21.reader.ui.media.isBooruSource
 
 class ImageMenuProvider(
 	private val activity: ComponentActivity,
@@ -58,7 +59,10 @@ class ImageMenuProvider(
 
 	private fun saveImage() {
 		val data = activity.intent.data
-		val isOriginal = settings.isPagesSaveOriginalEnabled && data?.isNetworkUri() == true
+		// must mirror ImageViewModel.saveImage's gate exactly (booru-only original bytes)
+		val isOriginal = settings.isPagesSaveOriginalEnabled &&
+			viewModel.source.isBooruSource() &&
+			data?.isNetworkUri() == true
 		val name = data?.let {
 			if (it.isZipUri()) {
 				it.fragment

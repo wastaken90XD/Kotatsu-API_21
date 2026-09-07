@@ -39,6 +39,7 @@ import org.wastaken.kotatsu.api21.core.util.ext.writeAllCancellable
 import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaPage
 import org.wastaken.kotatsu.api21.reader.domain.PageLoader
+import org.wastaken.kotatsu.api21.reader.ui.media.isBooruSource
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -87,7 +88,7 @@ class PageSaveHelper @AssistedInject constructor(
 	private suspend fun saveImpl(task: Task): Uri {
 		val pageLoader = getPageLoader()
 		val pageUrl = pageLoader.getPageUrl(task.page).toUri()
-		val useOriginal = isSaveOriginalToNetwork(pageUrl)
+		val useOriginal = isSaveOriginalForBooru(task, pageUrl)
 		val pageUri = if (useOriginal) null else pageLoader.loadPage(task.page, force = false)
 		val proposedName = task.getFileBaseName() + "." + if (pageUri != null) {
 			getPageExtension(pageUrl, pageUri)
@@ -130,7 +131,7 @@ class PageSaveHelper @AssistedInject constructor(
 		val result = ArrayList<Uri>(tasks.size)
 		for (task in tasks) {
 			val pageUrl = pageLoader.getPageUrl(task.page).toUri()
-			if (isSaveOriginalToNetwork(pageUrl)) {
+			if (isSaveOriginalForBooru(task, pageUrl)) {
 				result.add(saveOriginalImpl(task, destinationDir))
 				continue
 			}
@@ -147,8 +148,12 @@ class PageSaveHelper @AssistedInject constructor(
 		return result
 	}
 
-	private fun isSaveOriginalToNetwork(pageUrl: Uri): Boolean {
-		return settings.isPagesSaveOriginalEnabled && pageUrl.isNetworkUri()
+	private fun isSaveOriginalForBooru(task: Task, pageUrl: Uri): Boolean {
+		// strictly booru-only: for every other source the standard save action keeps
+		// its upstream behaviour (cached copy), the preference does not change it
+		return settings.isPagesSaveOriginalEnabled &&
+			task.page.source.isBooruSource() &&
+			pageUrl.isNetworkUri()
 	}
 
 	private suspend fun getPageExtension(url: Uri, fileUri: Uri): String {

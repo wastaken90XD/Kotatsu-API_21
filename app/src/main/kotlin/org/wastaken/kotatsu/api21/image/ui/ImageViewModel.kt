@@ -23,6 +23,7 @@ import org.wastaken.kotatsu.api21.core.util.ext.getDrawableOrThrow
 import org.wastaken.kotatsu.api21.core.util.ext.isNetworkUri
 import org.wastaken.kotatsu.api21.core.util.ext.mangaSourceExtra
 import org.wastaken.kotatsu.api21.core.util.ext.require
+import org.wastaken.kotatsu.api21.reader.ui.media.isBooruSource
 import javax.inject.Inject
 
 @HiltViewModel
@@ -36,13 +37,17 @@ class ImageViewModel @Inject constructor(
 
 	val onImageSaved = MutableEventFlow<Uri>()
 
+	val source = MangaSource(savedStateHandle[AppRouter.KEY_SOURCE])
+
 	fun saveImage(destination: Uri) {
 		launchLoadingJob(Dispatchers.Default) {
 			val data = savedStateHandle.require<Uri>(AppRouter.KEY_DATA)
-			if (settings.isPagesSaveOriginalEnabled && data.isNetworkUri()) {
+			// original-bytes saving is strictly booru-only: every other source keeps
+			// the upstream behaviour (decoded PNG copy), the toggle does not affect it
+			if (settings.isPagesSaveOriginalEnabled && source.isBooruSource() && data.isNetworkUri()) {
 				originalImageDownloader.download(
 					url = data.toString(),
-					source = MangaSource(savedStateHandle[AppRouter.KEY_SOURCE]),
+					source = source,
 					destination = destination,
 				)
 			} else {
@@ -50,7 +55,7 @@ class ImageViewModel @Inject constructor(
 					.memoryCachePolicy(CachePolicy.READ_ONLY)
 					.data(data)
 					.memoryCachePolicy(CachePolicy.DISABLED)
-					.mangaSourceExtra(MangaSource(savedStateHandle[AppRouter.KEY_SOURCE]))
+					.mangaSourceExtra(source)
 					.build()
 				val bitmap = coil.execute(request).getDrawableOrThrow().toBitmap()
 				runInterruptible(Dispatchers.IO) {

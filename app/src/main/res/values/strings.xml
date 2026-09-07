@@ -129,7 +129,7 @@
 	<string name="video_loop">Loop</string>
 	<string name="booru_grid_columns">Booru grid columns</string>
 	<string name="pages_save_original_title">Save original image</string>
-	<string name="pages_save_original_summary">Download the untouched original file instead of the cached or proxy-optimized version</string>
+	<string name="pages_save_original_summary">Download the untouched original file instead of the cached or proxy-optimized version (booru sources only)</string>
 	<string name="share_image">Share image</string>
 	<string name="_import">Import</string>
 	<string name="delete">Delete</string>
