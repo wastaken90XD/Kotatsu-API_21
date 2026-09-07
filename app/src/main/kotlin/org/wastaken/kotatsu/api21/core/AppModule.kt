@@ -3,6 +3,7 @@ package org.wastaken.kotatsu.api21.core
 import android.app.Application
 import android.content.Context
 import android.provider.SearchRecentSuggestions
+import android.os.Build
 import android.text.Html
 import androidx.collection.arraySetOf
 import androidx.core.content.ContextCompat
@@ -11,6 +12,7 @@ import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.disk.DiskCache
 import coil3.disk.directory
+import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.allowRgb565
@@ -131,11 +133,14 @@ interface AppModule {
 							connectivityChecker = { networkStateProvider.get() },
 						),
 					)
-					// API 21 hard target: GifDecoder on every API level.
-					// AnimatedImageDecoder (API 28+) is avoided entirely: it can crash natively
-					// and render blank frames on older devices, and GifDecoder handles
-					// zero-delay frames correctly where ImageDecoderDecoder does not.
-					add(GifDecoder.Factory())
+					// decoder selection identical to the base fork: hardware ImageDecoder
+					// on API 28+, software Movie decoder below. The booru GIF overlay
+					// works with both (its result is started explicitly, GifPageOverlay)
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+						add(AnimatedImageDecoder.Factory())
+					} else {
+						add(GifDecoder.Factory())
+					}
 					add(SvgDecoder.Factory())
 					add(CbzFetcher.Factory())
 					add(AvifImageDecoder.Factory())
