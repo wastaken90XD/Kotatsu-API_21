@@ -47,6 +47,16 @@ android {
 	buildTypes {
 		debug {
 			applicationIdSuffix = '.debug'
+			// crash reports from stale debug builds are otherwise indistinguishable
+			// (versionName never bumps here) - stamp the exact commit into the version name
+			try {
+				def gitHash = 'git rev-parse --short HEAD'.execute([], rootProject.rootDir).text.trim()
+				if (gitHash) {
+					versionNameSuffix '-' + gitHash
+				}
+			} catch (Exception ignored) {
+				// no git checkout available - leave the plain version name
+			}
 		}
 		release {
 			minifyEnabled true
