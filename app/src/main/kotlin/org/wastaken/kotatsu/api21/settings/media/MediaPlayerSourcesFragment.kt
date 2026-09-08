@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.viewModels
@@ -14,7 +15,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.ui.BaseFragment
+import org.wastaken.kotatsu.api21.core.util.ext.consumeAllSystemBarsInsets
 import org.wastaken.kotatsu.api21.core.util.ext.observe
+import org.wastaken.kotatsu.api21.core.util.ext.systemBarsInsets
 import org.wastaken.kotatsu.api21.databinding.FragmentMediaPlayerSourcesBinding
 
 /**
@@ -48,6 +51,22 @@ class MediaPlayerSourcesFragment : BaseFragment<FragmentMediaPlayerSourcesBindin
 			sourcesAdapter?.submit(items)
 			binding.textEmpty.isVisible = items.isEmpty()
 		}
+	}
+
+	override fun onApplyWindowInsets(v: View, insets: WindowInsetsCompat): WindowInsetsCompat {
+		val barsInsets = insets.systemBarsInsets
+		viewBinding?.recyclerView?.setPadding(
+			barsInsets.left,
+			barsInsets.top,
+			barsInsets.right,
+			barsInsets.bottom,
+		)
+		return insets.consumeAllSystemBarsInsets()
+	}
+
+	override fun onResume() {
+		super.onResume()
+		activity?.setTitle(R.string.media_player_sources)
 	}
 
 	override fun onDestroyView() {

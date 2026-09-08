@@ -53,6 +53,7 @@ import org.wastaken.kotatsu.api21.local.data.LocalStorageChanges
 import org.wastaken.kotatsu.api21.local.domain.DeleteLocalMangaUseCase
 import org.wastaken.kotatsu.api21.local.domain.model.LocalManga
 import org.koitharu.kotatsu.parsers.model.Manga
+import org.wastaken.kotatsu.api21.core.model.isLocal
 import org.koitharu.kotatsu.parsers.util.findById
 import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import org.wastaken.kotatsu.api21.reader.ui.PageSaveHelper
