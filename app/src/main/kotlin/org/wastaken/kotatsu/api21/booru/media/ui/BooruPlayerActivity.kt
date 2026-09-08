@@ -361,8 +361,11 @@ class BooruPlayerActivity :
 	// incl. the "title" extra so VLC shows the file name instead of the URL
 	private fun openExternalPlayer(item: BooruMediaItem, packageName: String? = null): Boolean {
 		val uri = android.net.Uri.parse(item.url)
+		// extension-less URLs get no signal from videoMimeType(); the resolved
+		// media type (incl. the tag/title fallbacks) decides the mime
+		val mime = if (item.mediaType == BooruMediaType.GIF) "image/gif" else item.url.videoMimeType()
 		val intent = Intent(Intent.ACTION_VIEW)
-			.setDataAndType(uri, item.url.videoMimeType())
+			.setDataAndType(uri, mime)
 			.putExtra("title", item.title)
 		if (packageName != null) intent.setPackage(packageName)
 		// resolveActivity is unfiltered here: the manifest holds QUERY_ALL_PACKAGES

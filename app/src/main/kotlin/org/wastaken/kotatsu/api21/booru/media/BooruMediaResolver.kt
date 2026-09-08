@@ -4,6 +4,10 @@ import org.koitharu.kotatsu.parsers.model.Manga
 import org.wastaken.kotatsu.api21.core.parser.MangaRepository
 import org.wastaken.kotatsu.api21.reader.ui.media.looksLikeGif
 import org.wastaken.kotatsu.api21.reader.ui.media.looksLikeVideo
+import org.wastaken.kotatsu.api21.reader.ui.media.tagsIndicateGif
+import org.wastaken.kotatsu.api21.reader.ui.media.tagsIndicateVideo
+import org.wastaken.kotatsu.api21.reader.ui.media.titleLooksLikeGif
+import org.wastaken.kotatsu.api21.reader.ui.media.titleLooksLikeVideo
 import org.wastaken.kotatsu.api21.reader.ui.media.urlFileName
 
 /**
@@ -11,6 +15,12 @@ import org.wastaken.kotatsu.api21.reader.ui.media.urlFileName
  * given a booru post (manga), fetch details + first page and build the queue
  * item for the media player. Returns null for static posts and on any failure
  * (callers fall back to the original navigation target).
+ *
+ * Classification order: resolved file URL (extension, query hint, filename
+ * substring) -> post tags (booru parsers expose slugs as tag keys) -> post
+ * title. Posts whose CDN URL carries no extension (extension-less/signed
+ * links) used to fall through to the reader and never play; the tag/title
+ * fallbacks route them to the player instead.
  */
 object BooruMediaResolver {
 
@@ -20,9 +30,15 @@ object BooruMediaResolver {
 		val chapter = details.chapters?.firstOrNull() ?: return null
 		val pages = repository.getPages(chapter)
 		val page = pages.firstOrNull() ?: return null
+		val tagKeys = details.tags.map { it.key }
+		val postTitle = details.title.ifEmpty { manga.title }
 		val type = when {
 			page.url.looksLikeGif() -> BooruMediaType.GIF
 			page.url.looksLikeVideo() -> BooruMediaType.VIDEO
+			tagKeys.tagsIndicateVideo() -> BooruMediaType.VIDEO
+			tagKeys.tagsIndicateGif() -> BooruMediaType.GIF
+			postTitle.titleLooksLikeVideo() -> BooruMediaType.VIDEO
+			postTitle.titleLooksLikeGif() -> BooruMediaType.GIF
 			else -> return null
 		}
 		return BooruMediaItem(

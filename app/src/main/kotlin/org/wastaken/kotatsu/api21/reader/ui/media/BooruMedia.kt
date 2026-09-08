@@ -14,22 +14,60 @@ import org.wastaken.kotatsu.api21.reader.ui.pager.ReaderPage
  */
 
 private val VIDEO_EXTENSIONS = setOf("mp4", "webm", "gifv")
+private const val GIF_EXTENSION = "gif"
+
+// booru tag slugs that mark animated/video posts when the file URL carries
+// no extension signal (extension-less CDN links, signed URLs, ...)
+private val VIDEO_TAGS = setOf("video", "webm", "mp4", "gifv", "animated_gif", "flash")
+private val GIF_TAGS = setOf("gif", "animated", "animated_gif")
 
 internal fun String.urlExtension(): String {
-	return substringBefore('#').substringBefore('?').substringAfterLast('.', "")
+	return substringBefore('#').substringBefore('?').substringAfterLast('.', "").lowercase()
+}
+
+/** Secondary signal: explicit format hints carried in the query ("?ext=", "?format="). */
+internal fun String.queryExtension(): String {
+	val query = substringAfter('?', "").substringBefore('#')
+	return query.split('&')
+		.firstOrNull { it.startsWith("ext=") || it.startsWith("format=") }
+		?.substringAfter('=')
+		?.lowercase()
+		.orEmpty()
 }
 
 internal fun String.looksLikeGif(): Boolean {
-	return urlExtension().equals("gif", ignoreCase = true)
+	if (urlExtension() == GIF_EXTENSION) return true
+	if (queryExtension() == GIF_EXTENSION) return true
+	// filename substring fallback: extension mid-name ("abc.gif?dl=1" styles)
+	return urlFileName().lowercase().contains(".$GIF_EXTENSION")
 }
 
 internal fun String.looksLikeVideo(): Boolean {
-	return urlExtension().lowercase() in VIDEO_EXTENSIONS
+	if (urlExtension() in VIDEO_EXTENSIONS) return true
+	if (queryExtension() in VIDEO_EXTENSIONS) return true
+	val filename = urlFileName().lowercase()
+	return VIDEO_EXTENSIONS.any { filename.contains(".$it") }
 }
 
 internal fun String.looksLikeMedia(): Boolean {
 	return looksLikeGif() || looksLikeVideo()
 }
+
+/** Tag-based detection — the fallback when the URL carries no signal at all. */
+internal fun Collection<String>.tagsIndicateVideo(): Boolean =
+	any { it.lowercase() in VIDEO_TAGS }
+
+internal fun Collection<String>.tagsIndicateGif(): Boolean =
+	any { it.lowercase() in GIF_TAGS }
+
+/** Title/free-text fallback: any "file.ext" mention in the post title decides. */
+internal fun String.titleLooksLikeVideo(): Boolean {
+	val text = lowercase()
+	return VIDEO_EXTENSIONS.any { text.contains(".$it") }
+}
+
+internal fun String.titleLooksLikeGif(): Boolean =
+	lowercase().contains(".$GIF_EXTENSION")
 
 /** Best-effort mime type for a video page URL, used for ACTION_VIEW intents. */
 internal fun String.videoMimeType(): String {
@@ -113,5 +151,9 @@ internal fun ReaderPage.isBooruMedia(): Boolean {
 
 /** Single gate for media detection: booru source check first, URL check second. */
 internal fun MangaPage.isBooruMedia(): Boolean {
-	return source.isBooruSource() && url.looksLikeMedia()
+	if (!source.isBooruSource()) return false
+	if (url.looksLikeMedia()) return true
+	// no tag fallback at this level: MangaPage carries no tags; the
+	// tag/title chain lives in BooruMediaResolver where the post is known
+	return false
 }
