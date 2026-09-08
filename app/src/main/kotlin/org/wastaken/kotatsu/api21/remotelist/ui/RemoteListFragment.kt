@@ -248,7 +248,7 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 				override fun onServiceConnected(name: android.content.ComponentName?, binder: android.os.IBinder?) {
 					(binder as? BooruMediaService.LocalBinder)?.service?.queue?.add(item)
 					runCatching { context.unbindService(this) }
-					Snackbar.make(binding.recyclerView, R.string.media_queued_toast, Snackbar.LENGTH_SHORT).show()
+					Snackbar.make(requireViewBinding().recyclerView, R.string.media_queued_toast, Snackbar.LENGTH_SHORT).show()
 				}
 
 				override fun onServiceDisconnected(name: android.content.ComponentName?) = Unit

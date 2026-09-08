@@ -9,6 +9,8 @@ import android.os.IBinder
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -75,6 +77,17 @@ class BooruPlaylistsActivity :
 	override fun onSupportNavigateUp(): Boolean {
 		finish()
 		return true
+	}
+
+	override fun onApplyWindowInsets(v: View, insets: WindowInsetsCompat): WindowInsetsCompat {
+		val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+		viewBinding.root.updatePadding(
+			left = systemBars.left,
+			top = systemBars.top,
+			right = systemBars.right,
+			bottom = systemBars.bottom,
+		)
+		return insets
 	}
 
 	private fun reload() {

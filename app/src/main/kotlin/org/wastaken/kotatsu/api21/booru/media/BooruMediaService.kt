@@ -17,7 +17,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.pm.ServiceInfoCompat
+import android.content.pm.ServiceInfo
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -27,6 +27,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.wastaken.kotatsu.api21.R
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
+import org.wastaken.kotatsu.api21.booru.media.ui.BooruPlayerActivity
 import org.wastaken.kotatsu.api21.core.network.MangaHttpClient
 import org.wastaken.kotatsu.api21.core.parser.MangaRepository
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
@@ -272,7 +273,11 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	fun setSpeed(newSpeed: Float) {
 		speed = newSpeed
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-			runCatching { mediaPlayer?.playbackParams = mediaPlayer?.playbackParams?.setSpeed(newSpeed) }
+			runCatching {
+				val player = mediaPlayer ?: return@runCatching
+				val params = player.playbackParams
+				if (params != null) player.playbackParams = params.setSpeed(newSpeed)
+			}
 		}
 	}
 
@@ -422,7 +427,7 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 		try {
 			ServiceCompat.startForeground(
 				this, NOTIFICATION_ID, notification,
-				ServiceInfoCompat.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+				ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
 			)
 		} catch (e: Exception) {
 			// notification permission denied on 33+ or a restricted-start edge:

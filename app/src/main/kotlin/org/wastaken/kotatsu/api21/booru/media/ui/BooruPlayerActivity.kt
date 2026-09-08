@@ -25,6 +25,8 @@ import android.view.View
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -148,6 +150,17 @@ class BooruPlayerActivity :
 	}
 
 
+
+	override fun onApplyWindowInsets(v: View, insets: WindowInsetsCompat): WindowInsetsCompat {
+		val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+		viewBinding.controlsOverlay.updatePadding(
+			left = systemBars.left,
+			top = systemBars.top,
+			right = systemBars.right,
+			bottom = systemBars.bottom,
+		)
+		return insets
+	}
 
 	override fun onDestroy() {
 		service?.removeListener(this)

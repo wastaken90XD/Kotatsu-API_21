@@ -22,6 +22,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.flow.combine
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.model.isLocal
+import org.wastaken.kotatsu.api21.reader.ui.media.isBooruSource
 import org.wastaken.kotatsu.api21.core.nav.AppRouter
 import org.wastaken.kotatsu.api21.core.nav.ReaderIntent
 import org.wastaken.kotatsu.api21.core.util.ext.getThemeColor

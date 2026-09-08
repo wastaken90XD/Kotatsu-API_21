@@ -24,7 +24,6 @@ import androidx.lifecycle.LifecycleOwner
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.koitharu.kotatsu.parsers.model.Manga
 import org.wastaken.kotatsu.api21.booru.media.BooruMediaResolver
 import org.wastaken.kotatsu.api21.booru.media.ui.BooruPlayerActivity
 import org.wastaken.kotatsu.api21.core.util.ext.getParcelableExtraCompat

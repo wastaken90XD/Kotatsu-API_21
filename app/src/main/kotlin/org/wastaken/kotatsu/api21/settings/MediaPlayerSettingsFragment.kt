@@ -46,9 +46,6 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MediaPlayerSettingsFragment : BasePreferenceFragment(R.string.media_player_settings) {
 
-	@Inject
-	lateinit var settings: AppSettings
-
 	private var pendingExportPayload: String? = null
 
 	private val createDocumentCall = registerForActivityResult(

@@ -107,7 +107,7 @@ open class RemoteListViewModel @Inject constructor(
 			if (item != null) {
 				onBooruMediaQueued.call(item)
 			} else {
-				onError.call(NullPointerException("Not a media post"))
+				errorEvent.call(NullPointerException("Not a media post"))
 			}
 		}
 	}
