@@ -98,6 +98,9 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	private val listeners = ArrayList<Listener>()
 	private var mediaPlayer: MediaPlayer? = null
 	private var proxy: VideoStreamProxy? = null
+	private var boundSurface: Surface? = null
+	private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+	private var prepareWatchdog: Runnable? = null
 	private var gifBytesCache: Pair<String, ByteArray>? = null
 	private var audioManager: AudioManager? = null
 	private var speed = 1f
@@ -289,11 +292,15 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 
 	/**
 	 * Hand the active render surface to the player (or null to detach).
-	 * Must be called with a valid surface BEFORE openVideo prepare for seamless
-	 * video; the prepare still completes without one (audio-only).
+	 * Mirrors the old reader overlay's mp.setDisplay(holder) semantics: the
+	 * surface is REMEMBERED so openVideo can attach it before setDataSource;
+	 * previously it was dropped whenever the player did not exist yet
+	 * (texture-available raced ahead of service bind), which left the player
+	 * surface-less forever - black + silent on Samsung API 21.
 	 */
 	fun bindSurface(surface: Surface?) {
-		mediaPlayer?.setSurface(surface)
+		boundSurface = surface
+		runCatching { mediaPlayer?.setSurface(surface) }
 	}
 
 	/** GIF bytes for the view layer, cached for one URL; full headers, explicit load. */
@@ -340,6 +347,10 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 		mediaPlayer = player
 		player.setOnPreparedListener { mp ->
 			if (mediaPlayer !== mp) return@setOnPreparedListener
+			cancelPrepareWatchdog()
+			// a surface that raced in during prepareAsync can be dropped by the
+			// platform's state restriction on setSurface; re-attach on prepared
+			runCatching { mp.setSurface(boundSurface) }
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 				runCatching { mp.playbackParams = mp.playbackParams.setSpeed(speed) }
 			}
@@ -371,6 +382,10 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 			onInfo?.invoke(mp, what, extra) == true
 		}
 		try {
+			// attach the remembered surface BEFORE setDataSource/prepare, exactly
+			// like the old overlay's mp.setDisplay(holder) ahead of prepareAsync;
+			// a surface released meanwhile just renders audio-only until rebinding
+			runCatching { player.setSurface(boundSurface) }
 			player.setDataSource(localUrl)
 		} catch (e: Exception) {
 			releaseVideo()
@@ -379,6 +394,24 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 			return
 		}
 		player.prepareAsync()
+		// silent-hang guard: if prepare neither completes nor errors within the
+		// window, surface it through the same error path so the user gets the
+		// external-playback dialog instead of an eternal black screen
+		val token = player
+		val watchdog = Runnable {
+			if (mediaPlayer === token && playbackState == PlaybackState.PREPARING) {
+				releaseVideo()
+				setState(PlaybackState.IDLE)
+				notifyError(item, -1, 0)
+			}
+		}
+		prepareWatchdog = watchdog
+		handler.postDelayed(watchdog, PREPARE_TIMEOUT_MS)
+	}
+
+	private fun cancelPrepareWatchdog() {
+		prepareWatchdog?.let { handler.removeCallbacks(it) }
+		prepareWatchdog = null
 	}
 
 	private fun autoAdvance() {
@@ -394,6 +427,7 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	}
 
 	private fun releaseVideo() {
+		cancelPrepareWatchdog()
 		runCatching {
 			mediaPlayer?.setOnPreparedListener(null)
 			mediaPlayer?.setOnErrorListener(null)
@@ -501,6 +535,8 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 		const val ACTION_PREV = "org.wastaken.kotatsu.api21.booru.media.PREV"
 		const val ACTION_STOP = "org.wastaken.kotatsu.api21.booru.media.STOP"
 
+		/** Covers slow booru CDNs + moov-at-end MP4 probes through the proxy. */
+		private const val PREPARE_TIMEOUT_MS = 30_000L
 		fun start(context: Context) {
 			ContextCompat.startForegroundService(context, Intent(context, BooruMediaService::class.java))
 		}

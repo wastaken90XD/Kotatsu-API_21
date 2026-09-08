@@ -109,6 +109,9 @@ class BooruPlayerActivity :
 					applyAspectMode()
 				}
 				service.onInfo = { mp, what, _ -> onMediaInfo(mp, what) }
+				// the texture may have become available before the bind landed;
+				// re-push the saved surface so it is never lost on connect
+				surface?.let { service.bindSurface(it) }
 				onQueueChanged()
 				onPlaybackStateChanged(service.playbackState, service.currentItem)
 				val item = pendingItem
