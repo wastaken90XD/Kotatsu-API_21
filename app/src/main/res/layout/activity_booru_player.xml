@@ -57,9 +57,10 @@
 
 			<ImageButton
 				android:id="@+id/buttonBack"
-				style="?attr/actionBarButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
+				
+				android:layout_width="48dp"
+				android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 				android:contentDescription="@string/back"
 				app:srcCompat="?attr/homeAsUpIndicator" />
 
@@ -75,17 +76,19 @@
 
 			<ImageButton
 				android:id="@+id/buttonQueue"
-				style="?attr/actionBarButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
+				
+				android:layout_width="48dp"
+				android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 				android:contentDescription="@string/media_queue_title"
 				app:srcCompat="@drawable/ic_list" />
 
 			<ImageButton
 				android:id="@+id/buttonFloating"
-				style="?attr/actionBarButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
+				
+				android:layout_width="48dp"
+				android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 				android:contentDescription="@string/media_open_floating"
 				app:srcCompat="@drawable/ic_expand" />
 
@@ -145,42 +148,47 @@
 
 				<ImageButton
 					android:id="@+id/buttonPrevious"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/previous"
 					app:srcCompat="@drawable/ic_prev" />
 
 				<ImageButton
 					android:id="@+id/buttonSkipBack"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/video_skip_backward"
 					android:rotation="180"
 					app:srcCompat="@drawable/ic_action_skip" />
 
 				<ImageButton
 					android:id="@+id/buttonPlayPause"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/play"
 					app:srcCompat="@drawable/ic_play" />
 
 				<ImageButton
 					android:id="@+id/buttonSkipForward"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/video_skip_forward"
 					app:srcCompat="@drawable/ic_action_skip" />
 
 				<ImageButton
 					android:id="@+id/buttonNext"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/next"
 					app:srcCompat="@drawable/ic_next" />
 
@@ -196,34 +204,38 @@
 
 				<ImageButton
 					android:id="@+id/buttonFrameBack"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/media_frame_step_back"
 					android:rotation="180"
 					app:srcCompat="@drawable/ic_action_skip" />
 
 				<ImageButton
 					android:id="@+id/buttonGifPlayPause"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/play"
 					app:srcCompat="@drawable/ic_play" />
 
 				<ImageButton
 					android:id="@+id/buttonFrameForward"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/media_frame_step_forward"
 					app:srcCompat="@drawable/ic_action_skip" />
 
 				<ImageButton
 					android:id="@+id/buttonSaveFrame"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/media_save_frame"
 					app:srcCompat="@drawable/ic_download" />
 
@@ -259,9 +271,10 @@
 
 				<ImageButton
 					android:id="@+id/buttonLock"
-					style="?attr/actionBarButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
+					
+					android:layout_width="48dp"
+					android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
 					android:contentDescription="@string/media_lock"
 					app:srcCompat="@drawable/ic_lock" />
 

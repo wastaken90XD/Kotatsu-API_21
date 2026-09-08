@@ -31,27 +31,27 @@
 
 			<ImageButton
 				android:id="@+id/floatButtonPlay"
-				style="?attr/actionBarButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
+				
+				android:layout_width="48dp"
+				android:layout_height="48dp"
 				android:background="?attr/selectableItemBackgroundBorderless"
 				android:contentDescription="@string/play"
 				app:srcCompat="@drawable/ic_play" />
 
 			<ImageButton
 				android:id="@+id/floatButtonExpand"
-				style="?attr/actionBarButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
+				
+				android:layout_width="48dp"
+				android:layout_height="48dp"
 				android:background="?attr/selectableItemBackgroundBorderless"
 				android:contentDescription="@string/media_mode_fullscreen"
 				app:srcCompat="@drawable/ic_expand" />
 
 			<ImageButton
 				android:id="@+id/floatButtonClose"
-				style="?attr/actionBarButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
+				
+				android:layout_width="48dp"
+				android:layout_height="48dp"
 				android:background="?attr/selectableItemBackgroundBorderless"
 				android:contentDescription="@string/clear"
 				app:srcCompat="@drawable/ic_clear_all" />
