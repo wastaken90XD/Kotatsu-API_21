@@ -1062,4 +1062,5 @@
 	<string name="media_save_image_video">Save image/video</string>
 	<string name="media_unavailable_source">Source unavailable</string>
 	<string name="media_play_external_summary">This video cannot be played in the app (unsupported codec or protected server). Open it externally instead?</string>
+	<string name="media_no_external_handler">No app found that can play this media</string>
 </resources>

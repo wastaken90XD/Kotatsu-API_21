@@ -3,6 +3,7 @@ package org.wastaken.kotatsu.api21.booru.media
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.Point
 import android.graphics.SurfaceTexture
 import android.os.Build
 import android.provider.Settings as AndroidSettings
@@ -55,7 +56,16 @@ class FloatingPlayerController(
 	fun show() {
 		if (rootView != null) return
 		if (!canShowOverlay()) return
-		val layout = LayoutInflater.from(context).inflate(R.layout.layout_floating_player, null)
+		// the Service context carries no theme on API 21-22 (MaterialCardView
+		// crashes ThemeEnforcement there): inflate through the app theme
+		// wrapper, exactly like NewPipe's popup view does
+		val themedContext = android.view.ContextThemeWrapper(context, R.style.Theme_Kotatsu)
+		val layout = runCatching {
+			LayoutInflater.from(themedContext).inflate(R.layout.layout_floating_player, null)
+		}.getOrElse { e ->
+			Toast.makeText(context, context.getString(R.string.media_floating_error, e.message), Toast.LENGTH_LONG).show()
+			return
+		}
 		val params = buildLayoutParams()
 		val texture = layout.findViewById<TextureView>(R.id.floatTexture)
 		val buttonPlay = layout.findViewById<ImageButton>(R.id.floatButtonPlay)
@@ -84,7 +94,7 @@ class FloatingPlayerController(
 		buttonClose.setOnClickListener { service.stopPlaybackAndQueueClear() }
 		buttonExpand.setOnClickListener { expandToFullScreen() }
 		syncPlayButton(buttonPlay)
-		installGesture(layout, texture)
+		installGesture(layout)
 		try {
 			windowManager.addView(layout, params)
 		} catch (e: WindowManager.BadTokenException) {
@@ -127,6 +137,13 @@ class FloatingPlayerController(
 		context.startActivity(intent)
 	}
 
+	@Suppress("DEPRECATION")
+	private fun screenSize(): Point = Point().also {
+		// defaultDisplay is still the documented way to size overlay windows
+		// (TYPE_PHONE / TYPE_APPLICATION_OVERLAY are not part of the app hierarchy)
+		windowManager.defaultDisplay.getSize(it)
+	}
+
 	private fun buildLayoutParams(): WindowManager.LayoutParams {
 		val (widthDp, heightDp) = when (service.settings.mediaFloatingSize) {
 			FloatingWindowSize.SMALL -> 240 to 135
@@ -134,11 +151,6 @@ class FloatingPlayerController(
 			FloatingWindowSize.LARGE -> 420 to 240
 		}
 		val density = context.resources.displayMetrics.density
-		val gravity = when (service.settings.mediaFloatingPosition) {
-			FloatingWindowPosition.TOP_RIGHT -> Gravity.TOP or Gravity.END
-			FloatingWindowPosition.BOTTOM_RIGHT -> Gravity.BOTTOM or Gravity.END
-			FloatingWindowPosition.BOTTOM_LEFT -> Gravity.BOTTOM or Gravity.START
-		}
 		val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 			WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
 		} else {
@@ -146,23 +158,44 @@ class FloatingPlayerController(
 			WindowManager.LayoutParams.TYPE_PHONE
 		}
 		val margin = (8 * density).toInt()
+		val width = (widthDp * density).toInt()
+		val height = (heightDp * density).toInt()
+		val screen = screenSize()
 		return WindowManager.LayoutParams(
-			(widthDp * density).toInt(),
-			(heightDp * density).toInt(),
+			width,
+			height,
 			type,
 			WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
 			PixelFormat.TRANSLUCENT,
 		).apply {
-			this.gravity = gravity
-			x = margin
-			y = margin
+			// drag math only works when x/y share the rawX/rawY origin (top-left):
+			// with Gravity.END/BOTTOM, x/y are offsets from the far corner and every
+			// MOVE event computed against rawX/rawY teleported the window off screen
+			gravity = Gravity.TOP or Gravity.START
+			when (service.settings.mediaFloatingPosition) {
+				FloatingWindowPosition.TOP_RIGHT -> {
+					x = maxOf(0, screen.x - width - margin)
+					y = margin
+				}
+				FloatingWindowPosition.BOTTOM_RIGHT -> {
+					x = maxOf(0, screen.x - width - margin)
+					y = maxOf(0, screen.y - height - margin)
+				}
+				FloatingWindowPosition.BOTTOM_LEFT -> {
+					x = margin
+					y = maxOf(0, screen.y - height - margin)
+				}
+			}
 		}
 	}
 
 	/**
 	 * Tap = expand, double-tap = play/pause, long-press = drag until release.
+	 * Drag drops are clamped to the visible screen (NewPipe popup behavior):
+	 * without clamping a fast fling can park the window where it can't be
+	 * grabbed again.
 	 */
-	private fun installGesture(layout: View, texture: View) {
+	private fun installGesture(layout: View) {
 		val detector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
 			override fun onDown(e: MotionEvent): Boolean = true
 
@@ -184,10 +217,9 @@ class FloatingPlayerController(
 		gestureDetector = detector
 		var downX = 0f
 		var downY = 0f
-		val touchTarget: View = layout
-		touchTarget.setOnTouchListener { _, event ->
+		layout.setOnTouchListener { _, event ->
 			detector.onTouchEvent(event)
-			val view = rootView ?: return@setOnTouchListener false
+			val view = rootView ?: return@setOnTouchListener true
 			val params = view.layoutParams as WindowManager.LayoutParams
 			when (event.action) {
 				MotionEvent.ACTION_DOWN -> {
@@ -195,16 +227,17 @@ class FloatingPlayerController(
 					downY = event.rawY - params.y
 				}
 				MotionEvent.ACTION_MOVE -> if (dragging) {
+					val screen = screenSize()
+					// params.x/y are absolute screen offsets (gravity is TOP|START),
+					// but event.rawX/rawY include the window's anchor offset too;
+					// downX/downY captured on ACTION_DOWN keep the space consistent
 					params.x = (event.rawX - downX).toInt()
+						.coerceIn(0, maxOf(0, screen.x - view.width))
 					params.y = (event.rawY - downY).toInt()
+						.coerceIn(0, maxOf(0, screen.y - view.height))
 					windowManager.updateViewLayout(view, params)
-					true
-				} else false
-				MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-					dragging = false
-					false
 				}
-				else -> false
+				MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging = false
 			}
 			true
 		}

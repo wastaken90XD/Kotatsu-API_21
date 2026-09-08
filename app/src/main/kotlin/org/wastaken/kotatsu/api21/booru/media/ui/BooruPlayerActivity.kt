@@ -149,6 +149,20 @@ class BooruPlayerActivity :
 		setControlsVisible(true)
 	}
 
+	override fun onNewIntent(intent: Intent) {
+		super.onNewIntent(intent)
+		// launchMode is singleTask: every later tap on a media post lands here,
+		// not in onCreate — parse and play it, otherwise it is silently dropped
+		setIntent(intent)
+		viewBinding.gifView.release()
+		val item = itemFromIntent(intent) ?: return
+		if (serviceBound) {
+			startPlayback(item)
+		} else {
+			pendingItem = item
+		}
+	}
+
 
 
 	override fun onApplyWindowInsets(v: View, insets: WindowInsetsCompat): WindowInsetsCompat {
@@ -241,9 +255,12 @@ class BooruPlayerActivity :
 	private var lastPreparedUrl: String? = null
 
 	private fun startPlayback(item: BooruMediaItem) {
+		// UI prep must run even when the same item re-arrives (e.g. re-entry
+		// through onNewIntent or expand-from-floating), otherwise the screen
+		// keeps the previous item's title/views
+		prepareUiFor(item)
 		if (item.url == lastPreparedUrl) return
 		lastPreparedUrl = item.url
-		prepareUiFor(item)
 		when (item.mediaType) {
 			BooruMediaType.VIDEO -> service?.playNow(item)
 			BooruMediaType.GIF -> {
@@ -303,17 +320,54 @@ class BooruPlayerActivity :
 		AlertDialog.Builder(this)
 			.setTitle(item.title)
 			.setMessage(R.string.media_play_external_summary)
-			.setPositiveButton(R.string.open_in_browser) { _, _ ->
-				runCatching {
-					startActivity(
-						Intent(Intent.ACTION_VIEW, android.net.Uri.parse(item.url))
-							.setDataAndType(android.net.Uri.parse(item.url), item.url.videoMimeType()),
-					)
-				}
-				finish()
+			.setPositiveButton(R.string.open_external) { _, _ ->
+				if (openExternalPlayer(item)) finish()
 			}
 			.setNegativeButton(android.R.string.cancel) { _, _ -> finish() }
 			.show()
+	}
+
+	/**
+	 * On-demand external playback (top bar button): mirrors the old in-reader
+	 * overlay action dialog — VLC first, then any external handler.
+	 */
+	private fun startExternalPlay() {
+		val item = service?.currentItem ?: return
+		AlertDialog.Builder(this)
+			.setTitle(item.title)
+			.setItems(
+				arrayOf(
+					getString(R.string.play_in_vlc),
+					getString(R.string.open_external),
+				),
+			) { _, which ->
+				when (which) {
+					0 -> if (!openExternalPlayer(item, VLC_PACKAGE) && !openExternalPlayer(item)) {
+						Toast.makeText(this, R.string.media_no_external_handler, Toast.LENGTH_SHORT).show()
+					}
+					1 -> if (!openExternalPlayer(item)) {
+						Toast.makeText(this, R.string.media_no_external_handler, Toast.LENGTH_SHORT).show()
+					}
+				}
+			}
+			.setNegativeButton(android.R.string.cancel, null)
+			.show()
+	}
+
+	// same intent shape the old reader overlay handed to external players,
+	// incl. the "title" extra so VLC shows the file name instead of the URL
+	private fun openExternalPlayer(item: BooruMediaItem, packageName: String? = null): Boolean {
+		val uri = android.net.Uri.parse(item.url)
+		val intent = Intent(Intent.ACTION_VIEW)
+			.setDataAndType(uri, item.url.videoMimeType())
+			.putExtra("title", item.title)
+		if (packageName != null) intent.setPackage(packageName)
+		// resolveActivity is unfiltered here: the manifest holds QUERY_ALL_PACKAGES
+		return if (intent.resolveActivity(packageManager) != null) {
+			runCatching { startActivity(intent) }.isSuccess
+		} else {
+			false
+		}
 	}
 
 	// endregion
@@ -333,6 +387,7 @@ class BooruPlayerActivity :
 		viewBinding.buttonNext.setOnClickListener { service?.playNext() }
 		viewBinding.buttonQueue.setOnClickListener { showQueueDialog() }
 		viewBinding.buttonFloating.setOnClickListener { openFloating() }
+		viewBinding.buttonExternal.setOnClickListener { startExternalPlay() }
 		viewBinding.buttonLock.setOnClickListener { toggleLock() }
 		viewBinding.buttonSpeed.setOnClickListener { showSpeedDialog() }
 		viewBinding.buttonLoop.setOnClickListener { toggleLoop() }
@@ -752,6 +807,7 @@ class BooruPlayerActivity :
 		private const val SWIPE_VOLUME = 2
 		private const val SWIPE_IGNORED = 3
 		private const val SWIPE_SLOP = 40
+		private const val VLC_PACKAGE = "org.videolan.vlc"
 
 		fun newIntent(context: Context, item: BooruMediaItem): Intent {
 			return Intent(context, BooruPlayerActivity::class.java)

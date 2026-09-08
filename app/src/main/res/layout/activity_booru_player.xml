@@ -92,6 +92,14 @@
 				android:contentDescription="@string/media_open_floating"
 				app:srcCompat="@drawable/ic_expand" />
 
+			<ImageButton
+				android:id="@+id/buttonExternal"
+				android:layout_width="48dp"
+				android:layout_height="48dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
+				android:contentDescription="@string/open_external"
+				app:srcCompat="@drawable/ic_open_external" />
+
 		</LinearLayout>
 
 		<Space

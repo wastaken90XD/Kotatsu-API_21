@@ -200,6 +200,8 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 		if (playbackState == state) return
 		playbackState = state
 		notifyListeners { onPlaybackStateChanged(state, currentItem) }
+		// the floating window icon tracks every source, not just its own tap
+		floatingController?.syncPlayButton()
 		updateNotification()
 	}
 
