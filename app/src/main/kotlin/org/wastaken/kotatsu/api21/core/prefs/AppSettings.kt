@@ -30,6 +30,8 @@ import org.wastaken.kotatsu.api21.booru.media.DefaultPlayerMode
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowPosition
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowSize
 import org.wastaken.kotatsu.api21.booru.media.GifTapAction
+import org.koitharu.kotatsu.parsers.model.MangaSource
+import org.wastaken.kotatsu.api21.reader.ui.media.mediaPlayerDefault
 import org.wastaken.kotatsu.api21.booru.media.RepeatMode
 import org.wastaken.kotatsu.api21.booru.media.VideoTapAction
 import org.wastaken.kotatsu.api21.core.util.ext.getEnumValue
@@ -169,6 +171,24 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	var isMediaQueuePersist: Boolean
 		get() = prefs.getBoolean(KEY_MEDIA_QUEUE_PERSIST, true)
 		set(value) = prefs.edit { putBoolean(KEY_MEDIA_QUEUE_PERSIST, value) }
+
+	/**
+	 * Per-source gate for the built-in media player ("media_player_source_*").
+	 * Default: on for native booru sources, off otherwise.
+	 */
+	fun isMediaPlayerEnabledForSource(source: MangaSource): Boolean =
+		prefs.getBoolean(KEY_MEDIA_PLAYER_SOURCE_PREFIX + source.name, source.mediaPlayerDefault())
+
+	fun setMediaPlayerEnabledForSource(source: MangaSource, enabled: Boolean) {
+		prefs.edit { putBoolean(KEY_MEDIA_PLAYER_SOURCE_PREFIX + source.name, enabled) }
+	}
+
+	fun resetMediaPlayerSourceOverrides() {
+		val keys = prefs.all.keys.filter { it.startsWith(KEY_MEDIA_PLAYER_SOURCE_PREFIX) }
+		if (keys.isNotEmpty()) {
+			prefs.edit { for (key in keys) remove(key) }
+		}
+	}
 
 	val mediaQueueRepeat: RepeatMode
 		get() = prefs.getEnumValue(KEY_MEDIA_QUEUE_REPEAT, RepeatMode.NONE)
@@ -822,6 +842,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_MEDIA_QUEUE_PERSIST = "media_queue_persist"
 		const val KEY_MEDIA_QUEUE_REPEAT = "media_queue_repeat"
 		const val KEY_MEDIA_QUEUE_SHUFFLE = "media_queue_shuffle"
+
+		/** Prefix for the per-source media-player toggles (dynamic keys, not exported). */
+		const val KEY_MEDIA_PLAYER_SOURCE_PREFIX = "media_player_source_"
 
 		/** Every key owned by Settings → "Media player" (settings import/export + diff). */
 		@JvmField

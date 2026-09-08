@@ -171,7 +171,7 @@ class VideoPageOverlay(
 	fun onBind(page: ReaderPage): Boolean {
 		reset()
 		// source check comes first, always (see BooruMedia.kt)
-		isHandling = page.isBooru() && page.url.looksLikeVideo()
+		isHandling = page.source.isMediaPlayerEnabled(entryPoint.settings()) && page.url.looksLikeVideo()
 		if (!isHandling) {
 			return false
 		}

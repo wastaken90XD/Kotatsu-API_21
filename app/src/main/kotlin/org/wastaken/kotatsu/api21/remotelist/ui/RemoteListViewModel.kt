@@ -61,7 +61,7 @@ open class RemoteListViewModel @Inject constructor(
 	savedStateHandle: SavedStateHandle,
 	private val mangaRepositoryFactory: MangaRepository.Factory,
 	final override val filterCoordinator: FilterCoordinator,
-	settings: AppSettings,
+	private val settings: AppSettings,
 	protected val mangaListMapper: MangaListMapper,
 	private val exploreRepository: ExploreRepository,
 	sourcesRepository: MangaSourcesRepository,
@@ -90,6 +90,10 @@ open class RemoteListViewModel @Inject constructor(
 	 * Static posts and failures fall back to [fallback] on the main thread.
 	 */
 	fun routeBooruPost(manga: Manga, fallback: () -> Unit) {
+		if (!settings.isMediaPlayerEnabledForSource(manga.source)) {
+			fallback()
+			return
+		}
 		launchLoadingJob(Dispatchers.Main) {
 			val item = runCatching { BooruMediaResolver.resolve(mangaRepositoryFactory, manga) }.getOrNull()
 			if (item != null) {

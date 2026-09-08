@@ -28,7 +28,6 @@ import org.wastaken.kotatsu.api21.booru.media.BooruMediaResolver
 import org.wastaken.kotatsu.api21.booru.media.ui.BooruPlayerActivity
 import org.wastaken.kotatsu.api21.core.util.ext.getParcelableExtraCompat
 import org.wastaken.kotatsu.api21.core.util.ext.processLifecycleScope
-import org.wastaken.kotatsu.api21.reader.ui.media.isBooruSource
 import org.wastaken.kotatsu.api21.BuildConfig
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.alternatives.ui.AlternativesActivity
@@ -177,11 +176,11 @@ class AppRouter private constructor(
 		val context = contextOrNull() ?: return
 		val parcelableManga = intent.intent.getParcelableExtraCompat<ParcelableManga>(KEY_MANGA)
 		val manga = parcelableManga?.manga
-		if (manga != null && manga.source.isBooruSource() && !manga.isLocal) {
-			// booru GIF/video posts must never enter the manga/webtoon reader:
+		if (manga != null && !manga.isLocal && settings.isMediaPlayerEnabledForSource(manga.source)) {
+			// media-player-enabled posts must never enter the manga/webtoon reader:
 			// resolve the post's file URL first and route to the booru player;
 			// static posts (and any resolution failure) keep the original flow
-			openBooruPostOrReader(context, manga) { startReaderActivity(intent, anchor) }
+			openBooruPostOrPlayer(context, manga) { startReaderActivity(intent, anchor) }
 			return
 		}
 		startReaderActivity(intent, anchor)
@@ -200,7 +199,7 @@ class AppRouter private constructor(
 	 * post's file URL; media posts go to BooruPlayerActivity, everything else
 	 * falls back to [fallback] on the main thread.
 	 */
-	private fun openBooruPostOrReader(context: Context, manga: Manga, fallback: () -> Unit) {
+	private fun openBooruPostOrPlayer(context: Context, manga: Manga, fallback: () -> Unit) {
 		processLifecycleScope.launch(Dispatchers.Main) {
 			val item = runCatching {
 				BooruMediaResolver.resolve(entryPoint(context).mangaRepositoryFactory, manga)

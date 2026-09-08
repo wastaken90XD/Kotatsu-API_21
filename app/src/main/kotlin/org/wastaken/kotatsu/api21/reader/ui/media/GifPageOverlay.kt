@@ -78,7 +78,7 @@ class GifPageOverlay(
 	fun onBind(page: ReaderPage): Boolean {
 		reset()
 		// source check comes first, always (see BooruMedia.kt)
-		isHandling = page.isBooru() && page.url.looksLikeGif()
+		isHandling = page.source.isMediaPlayerEnabled(entryPoint.settings()) && page.url.looksLikeGif()
 		if (!isHandling) {
 			return false
 		}

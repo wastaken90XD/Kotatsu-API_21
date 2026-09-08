@@ -5,6 +5,7 @@ import org.koitharu.kotatsu.parsers.model.MangaPage
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.wastaken.kotatsu.api21.core.model.unwrap
+import org.wastaken.kotatsu.api21.core.prefs.AppSettings
 import org.wastaken.kotatsu.api21.reader.ui.pager.ReaderPage
 
 /**
@@ -134,26 +135,30 @@ private fun String.danbooruVideoVariants(): List<StreamVariant>? {
 	}
 }
 
-/** True only for booru parser sources; every reader-media gate originates here. */
+/** True only for booru parser sources (native-booru eligibility: tags, defaults). */
 internal fun MangaSource.isBooruSource(): Boolean {
 	return (unwrap() as? MangaParserSource)?.contentType == ContentType.BOORU
 }
 
-internal fun ReaderPage.isBooru(): Boolean {
-	// source check ALWAYS comes first: extensions alone must never be trusted,
-	// otherwise ordinary comic pages with gif/video in the URL would be gated
-	return source.isBooruSource()
-}
+/**
+ * Whether the built-in media player is switched on for this source.
+ * Settings-driven (per-source toggle), replaces the source-type-only gate.
+ */
+internal fun MangaSource.isMediaPlayerEnabled(settings: AppSettings): Boolean =
+	settings.isMediaPlayerEnabledForSource(this)
 
-internal fun ReaderPage.isBooruMedia(): Boolean {
-	return isBooru() && url.looksLikeMedia()
-}
+/** Default value per source: ON for native booru, OFF otherwise. */
+internal fun MangaSource.mediaPlayerDefault(): Boolean = isBooruSource()
 
-/** Single gate for media detection: booru source check first, URL check second. */
-internal fun MangaPage.isBooruMedia(): Boolean {
-	if (!source.isBooruSource()) return false
+internal fun MangaPage.isBooruMedia(settings: AppSettings): Boolean {
+	if (!source.isMediaPlayerEnabled(settings)) return false
 	if (url.looksLikeMedia()) return true
 	// no tag fallback at this level: MangaPage carries no tags; the
 	// tag/title chain lives in BooruMediaResolver where the post is known
 	return false
+}
+
+internal fun ReaderPage.isBooruMedia(settings: AppSettings): Boolean {
+	if (!source.isMediaPlayerEnabled(settings)) return false
+	return url.looksLikeMedia()
 }

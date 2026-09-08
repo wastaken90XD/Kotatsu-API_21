@@ -7,12 +7,13 @@ import org.wastaken.kotatsu.api21.reader.ui.media.looksLikeVideo
 import org.wastaken.kotatsu.api21.reader.ui.media.tagsIndicateGif
 import org.wastaken.kotatsu.api21.reader.ui.media.tagsIndicateVideo
 import org.wastaken.kotatsu.api21.reader.ui.media.titleLooksLikeGif
+import org.wastaken.kotatsu.api21.reader.ui.media.isBooruSource
 import org.wastaken.kotatsu.api21.reader.ui.media.titleLooksLikeVideo
 import org.wastaken.kotatsu.api21.reader.ui.media.urlFileName
 
 /**
  * One network-level resolution step shared by every navigation entry point:
- * given a booru post (manga), fetch details + first page and build the queue
+ * given a post (manga), fetch details + first page and build the queue
  * item for the media player. Returns null for static posts and on any failure
  * (callers fall back to the original navigation target).
  *
@@ -32,13 +33,16 @@ object BooruMediaResolver {
 		val page = pages.firstOrNull() ?: return null
 		val tagKeys = details.tags.map { it.key }
 		val postTitle = details.title.ifEmpty { manga.title }
+		// tag/title heuristics are only trustworthy on native boorus; an
+		// enabled non-booru source classifies strictly by its file URL
+		val isBooruNative = manga.source.isBooruSource()
 		val type = when {
 			page.url.looksLikeGif() -> BooruMediaType.GIF
 			page.url.looksLikeVideo() -> BooruMediaType.VIDEO
-			tagKeys.tagsIndicateVideo() -> BooruMediaType.VIDEO
-			tagKeys.tagsIndicateGif() -> BooruMediaType.GIF
-			postTitle.titleLooksLikeVideo() -> BooruMediaType.VIDEO
-			postTitle.titleLooksLikeGif() -> BooruMediaType.GIF
+			isBooruNative && tagKeys.tagsIndicateVideo() -> BooruMediaType.VIDEO
+			isBooruNative && tagKeys.tagsIndicateGif() -> BooruMediaType.GIF
+			isBooruNative && postTitle.titleLooksLikeVideo() -> BooruMediaType.VIDEO
+			isBooruNative && postTitle.titleLooksLikeGif() -> BooruMediaType.GIF
 			else -> return null
 		}
 		return BooruMediaItem(

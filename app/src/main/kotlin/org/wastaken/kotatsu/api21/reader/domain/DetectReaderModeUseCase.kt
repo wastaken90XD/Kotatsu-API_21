@@ -63,7 +63,7 @@ class DetectReaderModeUseCase @Inject constructor(
 		val pageIndex = (pages.size * 0.3).roundToInt()
 		val page = requireNotNull(pages.getOrNull(pageIndex)) { "No pages" }
 		val url = repository.getPageUrl(page)
-		if (page.isBooruMedia()) {
+		if (page.isBooruMedia(settings)) {
 			// strictly booru-only: media pages there are explicit-load, so skip the
 			// probe download and use standard mode; non-booru pages probe as before
 			return false

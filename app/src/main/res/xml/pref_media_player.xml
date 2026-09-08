@@ -2,6 +2,13 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto">
 
+	<PreferenceScreen
+		android:fragment="org.wastaken.kotatsu.api21.settings.media.MediaPlayerSourcesFragment"
+		android:icon="@drawable/ic_list"
+		android:key="media_player_sources"
+		android:summary="@string/media_player_sources_summary"
+		android:title="@string/media_player_sources" />
+
 	<PreferenceCategory android:title="@string/media_thumbnails">
 
 		<SwitchPreferenceCompat

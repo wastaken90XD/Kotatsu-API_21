@@ -1063,4 +1063,9 @@
 	<string name="media_unavailable_source">Source unavailable</string>
 	<string name="media_play_external_summary">This video cannot be played in the app (unsupported codec or protected server). Open it externally instead?</string>
 	<string name="media_no_external_handler">No app found that can play this media</string>
+	<string name="media_player_sources">Media player sources</string>
+	<string name="media_player_sources_summary">Choose which sources may open GIFs and videos in the built-in media player</string>
+	<string name="media_sources_reset">Reset to defaults</string>
+	<string name="media_sources_search_hint">Search sources</string>
+	<string name="media_sources_empty">No sources found</string>
 </resources>

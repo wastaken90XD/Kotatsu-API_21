@@ -103,6 +103,10 @@ class DetailsViewModel @Inject constructor(
 	 * Booru read-button routing (media spec): media posts never open the reader,
 	 * they resolve to the booru player; static posts run [fallback] (main thread).
 	 */
+	/** Read-button gate: only media-player-enabled, non-local posts take the player route. */
+	fun isMediaRoutingEnabled(manga: Manga): Boolean =
+		!manga.isLocal && settings.isMediaPlayerEnabledForSource(manga.source)
+
 	fun routeBooruPost(manga: Manga, fallback: () -> Unit) {
 		viewModelScope.launch(Dispatchers.Main) {
 			val item = runCatching {

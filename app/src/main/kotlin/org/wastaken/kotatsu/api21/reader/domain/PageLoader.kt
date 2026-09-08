@@ -119,7 +119,7 @@ class PageLoader @Inject constructor(
 	fun prefetch(pages: List<ReaderPage>) = loaderScope.launch {
 		prefetchLock.withLock {
 			for (page in pages.asReversed()) {
-				if (page.isBooruMedia()) {
+				if (page.isBooruMedia(settings)) {
 					// gif/video booru pages are explicit-load only: never prefetch multi-MB media
 					continue
 				}
