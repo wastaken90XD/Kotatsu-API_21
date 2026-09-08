@@ -1,5 +1,6 @@
 package org.wastaken.kotatsu.api21.remotelist.ui
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
@@ -7,6 +8,7 @@ import android.view.MenuItem
 import android.view.View
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.viewModels
+import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChangedBy
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.drop
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.core.model.getTitle
 import org.wastaken.kotatsu.api21.core.nav.router
+import org.wastaken.kotatsu.api21.core.prefs.ListMode
 import org.wastaken.kotatsu.api21.core.ui.list.ListSelectionController
 import org.wastaken.kotatsu.api21.core.ui.util.MenuInvalidator
 import org.wastaken.kotatsu.api21.core.util.ext.addMenuProvider
@@ -23,18 +26,47 @@ import org.wastaken.kotatsu.api21.core.util.ext.observe
 import org.wastaken.kotatsu.api21.core.util.ext.observeEvent
 import org.wastaken.kotatsu.api21.core.util.ext.withArgs
 import org.wastaken.kotatsu.api21.databinding.FragmentListBinding
+import org.wastaken.kotatsu.api21.details.ui.pager.pages.PagesSavedObserver
 import org.wastaken.kotatsu.api21.filter.ui.FilterCoordinator
 import org.wastaken.kotatsu.api21.list.ui.MangaListFragment
+import org.wastaken.kotatsu.api21.core.prefs.AppSettings
+import org.wastaken.kotatsu.api21.list.ui.adapter.BooruGridAdapter
+import org.wastaken.kotatsu.api21.list.ui.adapter.ListItemType
+import org.wastaken.kotatsu.api21.list.ui.adapter.MangaListAdapter
+import org.wastaken.kotatsu.api21.list.ui.model.BooruGridModel
+import org.wastaken.kotatsu.api21.list.ui.model.MangaListModel
+import org.wastaken.kotatsu.api21.reader.ui.PageSaveHelper
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.wastaken.kotatsu.api21.search.domain.SearchKind
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	override val viewModel by viewModels<RemoteListViewModel>()
 
+	private var booruAdapter: BooruGridAdapter? = null
+	private val booruSpanSizeLookup = BooruSpanSizeLookup()
+
+	@Inject
+	lateinit var pageSaveHelperFactory: PageSaveHelper.Factory
+
+	private lateinit var pageSaveHelper: PageSaveHelper
+
+	/** Live-applies the booru grid column setting (existing AppSettings listener pattern). */
+	private val booruColumnsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+		if (key == AppSettings.KEY_BOORU_GRID_COLUMNS) {
+			onBooruGridColumnsChanged()
+		}
+	}
+
 	override val filterCoordinator: FilterCoordinator
 		get() = viewModel.filterCoordinator
+
+	override fun onAttach(context: android.content.Context) {
+		super.onAttach(context)
+		pageSaveHelper = pageSaveHelperFactory.create(this)
+	}
 
 	override fun onViewBindingCreated(binding: FragmentListBinding, savedInstanceState: Bundle?) {
 		super.onViewBindingCreated(binding, savedInstanceState)
@@ -42,6 +74,8 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 		addMenuProvider(MangaSearchMenuProvider(filterCoordinator, viewModel))
 		viewModel.isRandomLoading.observe(viewLifecycleOwner, MenuInvalidator(requireActivity()))
 		viewModel.onOpenManga.observeEvent(viewLifecycleOwner) { router.openDetails(it) }
+		viewModel.onImageSaved.observeEvent(viewLifecycleOwner, PagesSavedObserver(binding.recyclerView))
+		settings.subscribe(booruColumnsListener)
 		filterCoordinator.observe().distinctUntilChangedBy { it.listFilter.isEmpty() }
 			.drop(1)
 			.observe(viewLifecycleOwner) {
@@ -49,8 +83,86 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 			}
 	}
 
+	override fun onCreateAdapter(): MangaListAdapter {
+		return if (viewModel.isBooru) {
+			// booru sources are browsed as a square-thumbnail grid (see BooruGridAdapter);
+			// all other sources keep the standard manga tiles untouched
+			BooruGridAdapter(this, settings.booruGridColumns).also { booruAdapter = it }
+		} else {
+			super.onCreateAdapter()
+		}
+	}
+
+	override fun onListModeChanged(mode: ListMode) {
+		if (!viewModel.isBooru) {
+			super.onListModeChanged(mode)
+			return
+		}
+		val columns = settings.booruGridColumns
+		booruSpanSizeLookup.fullSpan = columns
+		with(requireViewBinding().recyclerView) {
+			layoutManager = GridLayoutManager(context, columns).also {
+				it.spanSizeLookup = booruSpanSizeLookup
+			}
+			setItemViewCacheSize(BOORU_VIEW_CACHE_SIZE)
+		}
+	}
+
+	override fun onGridScaleChanged(scale: Float) {
+		// the global grid-size scale does not apply to the booru grid: it follows its
+		// own column-count setting (booru_grid_columns) instead
+		if (!viewModel.isBooru) {
+			super.onGridScaleChanged(scale)
+		}
+	}
+
+	private fun onBooruGridColumnsChanged() {
+		if (!viewModel.isBooru) {
+			return
+		}
+		val binding = requireViewBinding()
+		val columns = settings.booruGridColumns
+		(binding.recyclerView.layoutManager as? GridLayoutManager)?.let { manager: GridLayoutManager ->
+			manager.spanCount = columns
+			booruSpanSizeLookup.fullSpan = columns
+			// setSpanCount already invalidates the span-index cache; explicit call keeps
+			// the lookup state consistent
+			booruSpanSizeLookup.invalidateSpanIndexCache()
+		}
+		booruAdapter?.notifyDataSetChanged()
+	}
+
+	override fun onDestroyView() {
+		settings.unsubscribe(booruColumnsListener)
+		booruAdapter = null
+		super.onDestroyView()
+	}
+
+	private inner class BooruSpanSizeLookup : GridLayoutManager.SpanSizeLookup() {
+
+		/** Mirrors the current column count: state/footer rows are always full-width. */
+		var fullSpan: Int = 3
+
+		override fun getSpanSize(position: Int): Int {
+			return when (booruAdapter?.getItemViewType(position)) {
+				ListItemType.BOORU_GRID.ordinal -> 1
+				else -> fullSpan
+			}
+		}
+	}
+
 	override fun onScrolledToEnd() {
 		viewModel.loadNextPage()
+	}
+
+	override fun onItemLongClick(item: MangaListModel, view: View): Boolean {
+		if (viewModel.isBooru && item is BooruGridModel) {
+			// booru grid: long-press saves the post's image directly (same pipeline
+			// as the details-screen save action; honors the original-bytes preference)
+			viewModel.saveBooruImage(pageSaveHelper, item.manga)
+			return true
+		}
+		return super.onItemLongClick(item, view)
 	}
 
 	override fun onCreateActionMode(
@@ -140,6 +252,9 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 	companion object {
 
 		const val ARG_SOURCE = "provider"
+
+		/** Extra recycled views kept around to avoid rebinding on slow scroll (weak hardware). */
+		private const val BOORU_VIEW_CACHE_SIZE = 6
 
 		fun newInstance(source: MangaSource) = RemoteListFragment().withArgs(1) {
 			putString(ARG_SOURCE, source.name)

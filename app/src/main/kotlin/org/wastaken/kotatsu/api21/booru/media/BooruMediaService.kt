@@ -1,0 +1,515 @@
+package org.wastaken.kotatsu.api21.booru.media
+
+import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.os.Binder
+import android.os.Build
+import android.os.IBinder
+import android.view.Surface
+import androidx.core.app.NotificationChannelCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.pm.ServiceInfoCompat
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import org.wastaken.kotatsu.api21.R
+import org.wastaken.kotatsu.api21.core.network.MangaLoaderContext
+import org.wastaken.kotatsu.api21.core.network.MangaHttpClient
+import org.wastaken.kotatsu.api21.core.parser.MangaRepository
+import org.wastaken.kotatsu.api21.core.prefs.AppSettings
+import org.wastaken.kotatsu.api21.core.util.ext.checkNotificationPermission
+import org.wastaken.kotatsu.api21.reader.ui.media.VideoStreamProxy
+import java.io.IOException
+import javax.inject.Inject
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
+/**
+ * The single owner of all booru media playback (NewPipe PlayerHolder model):
+ * one service, one queue, one player state, no matter which screen triggered it.
+ *
+ * - Bound + started: UI surfaces (BooruPlayerActivity, floating window) bind and
+ *   submit their Surface; the service survives their lifecycle and never restarts
+ *   from scratch.
+ * - Foreground with a persistent notification while anything is playing or queued,
+ *   so API-21 low-memory killer does not interrupt playback.
+ * - The queue is restored from SharedPreferences on start (if the persist setting
+ *   is on) and saved on every change; repeat mode rides along.
+ *
+ * Video plays through the stock [MediaPlayer] fed by the memory-only
+ * [VideoStreamProxy] (streamed via the manga OkHttp stack with full source
+ * headers). GIFs are fetched once into memory and handed to the UI layer to
+ * step/loop (frame stepping is a view-level concern on the Movie timeline).
+ */
+@AndroidEntryPoint
+class BooruMediaService : Service(), BooruMediaQueue.Listener {
+
+	enum class PlaybackState { IDLE, PREPARING, PLAYING, PAUSED }
+
+	interface Listener {
+		fun onQueueChanged()
+		fun onPlaybackStateChanged(state: PlaybackState, item: BooruMediaItem?)
+		fun onPlaybackError(item: BooruMediaItem?, what: Int, extra: Int)
+	}
+
+	inner class LocalBinder : Binder() {
+		val service: BooruMediaService get() = this@BooruMediaService
+	}
+
+	@Inject
+	lateinit var settings: AppSettings
+
+	@Inject
+	lateinit var queueStore: BooruMediaQueueStore
+
+	@MangaHttpClient
+	@Inject
+	lateinit var okHttpClient: OkHttpClient
+
+	@Inject
+	lateinit var mangaRepositoryFactory: MangaRepository.Factory
+
+	@Inject
+	lateinit var mangaLoaderContext: MangaLoaderContext
+
+	val queue = BooruMediaQueue()
+
+	var playbackState = PlaybackState.IDLE
+		private set
+
+	val currentItem: BooruMediaItem?
+		get() = queue.current()
+
+	private val binder = LocalBinder()
+	private val listeners = ArrayList<Listener>()
+	private var mediaPlayer: MediaPlayer? = null
+	private var proxy: VideoStreamProxy? = null
+	private var gifBytesCache: Pair<String, ByteArray>? = null
+	private var audioManager: AudioManager? = null
+	private var speed = 1f
+	private var floatingController: FloatingPlayerController? = null
+
+	/** Bridges for the active player UI (activity / floating window). */
+	var onVideoSizeChanged: ((width: Int, height: Int) -> Unit)? = null
+
+	var onInfo: ((MediaPlayer, what: Int, extra: Int) -> Boolean)? = null
+
+	var videoWidth = 0
+		private set
+
+	var videoHeight = 0
+		private set
+
+	val isFloating: Boolean
+		get() = floatingController?.isShowing == true
+
+	/**
+	 * Opens the system-overlay floating player (Task 3). Returns false when the
+	 * overlay permission is missing and the caller must route the user to
+	 * [FloatingPlayerController.overlaySettingsIntent]. GIF items render only in
+	 * the full-screen activity (Movie drawing is view-bound), so a GIF current
+	 * item returns true but keeps the window closed.
+	 */
+	fun openFloating(): Boolean {
+		if (floatingController == null) floatingController = FloatingPlayerController(this, this)
+		val controller = floatingController ?: return false
+		if (!controller.canShowOverlay()) return false
+		val item = currentItem
+		if (item == null || item.mediaType == BooruMediaType.GIF) return true
+		controller.show()
+		return true
+	}
+
+	fun closeFloating() {
+		floatingController?.hide()
+	}
+
+	fun overlaySettingsIntent() = FloatingPlayerController(this, this).overlaySettingsIntent()
+
+	override fun onCreate() {
+		super.onCreate()
+		audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+		createNotificationChannel()
+		queue.addListener(this)
+		if (settings.isMediaQueuePersist) {
+			queueStore.restoreInto(queue)
+		}
+		speed = settings.mediaDefaultSpeed
+		ensureForeground()
+	}
+
+	override fun onBind(intent: Intent?): IBinder = binder
+
+	override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+		when (intent?.action) {
+			ACTION_TOGGLE -> togglePlayPause()
+			ACTION_NEXT -> playNext()
+			ACTION_PREV -> playPrevious()
+			ACTION_STOP -> {
+				releaseVideo()
+				stopSelf()
+			}
+			else -> Unit
+		}
+		ensureForeground()
+		return START_STICKY
+	}
+
+	override fun onDestroy() {
+		releaseVideo()
+		queue.removeListener(this)
+		ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+		super.onDestroy()
+	}
+
+	// region listeners
+
+	fun addListener(listener: Listener) {
+		if (listener !in listeners) listeners.add(listener)
+	}
+
+	fun removeListener(listener: Listener) {
+		listeners.remove(listener)
+	}
+
+	override fun onQueueChanged() {
+		if (settings.isMediaQueuePersist) {
+			queueStore.persist(queue)
+		} else {
+			queueStore.clear()
+		}
+		notifyListeners { onQueueChanged() }
+		updateNotification()
+	}
+
+	private fun setState(state: PlaybackState) {
+		if (playbackState == state) return
+		playbackState = state
+		notifyListeners { onPlaybackStateChanged(state, currentItem) }
+		updateNotification()
+	}
+
+	private fun notifyError(item: BooruMediaItem?, what: Int, extra: Int) {
+		notifyListeners { onPlaybackError(item, what, extra) }
+	}
+
+	private inline fun notifyListeners(block: Listener.() -> Unit) {
+		for (listener in listeners.toList()) listener.block()
+	}
+
+	// endregion
+
+	// region public playback API
+
+	fun playNow(item: BooruMediaItem) {
+		val existing = queue.items.indexOfFirst { it.id == item.id }
+		val position = if (existing >= 0) existing else queue.add(item)
+		playIndex(position)
+	}
+
+	fun playIndex(position: Int) {
+		val item = queue.jumpTo(position) ?: return
+		if (item.mediaType == BooruMediaType.VIDEO) {
+			openVideo(item)
+		} else {
+			releaseVideo() // GIFs render in the view layer; state only tracks "current"
+			setState(PlaybackState.PLAYING)
+		}
+	}
+
+	fun playNext() {
+		val next = queue.nextIndex()
+		if (next >= 0) playIndex(next) else setState(PlaybackState.IDLE)
+	}
+
+	fun playPrevious() {
+		val prev = queue.previousIndex()
+		if (prev >= 0) playIndex(prev)
+	}
+
+	fun togglePlayPause() {
+		val player = mediaPlayer ?: return
+		if (player.isPlaying) {
+			player.pause()
+			setState(PlaybackState.PAUSED)
+			abandonAudioFocus()
+		} else {
+			requestAudioFocus()
+			player.start()
+			setState(PlaybackState.PLAYING)
+		}
+	}
+
+	fun seekTo(positionMs: Int) {
+		mediaPlayer?.let { player ->
+			runCatching { player.seekTo(positionMs.coerceIn(0, player.duration)) }
+		}
+	}
+
+	fun seekBy(deltaMs: Int) {
+		mediaPlayer?.let { player -> seekTo(player.currentPosition + deltaMs) }
+	}
+
+	fun isVideoPlaying(): Boolean = runCatching { mediaPlayer?.isPlaying == true }.getOrDefault(false)
+
+	fun videoDuration(): Int = runCatching { mediaPlayer?.duration ?: 0 }.getOrDefault(0)
+
+	fun videoPosition(): Int = runCatching { mediaPlayer?.currentPosition ?: 0 }.getOrDefault(0)
+
+	fun setSpeed(newSpeed: Float) {
+		speed = newSpeed
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+			runCatching { mediaPlayer?.playbackParams = mediaPlayer?.playbackParams?.setSpeed(newSpeed) }
+		}
+	}
+
+	fun setVideoLooping(looping: Boolean) {
+		runCatching { mediaPlayer?.isLooping = looping }
+	}
+
+	/**
+	 * Hand the active render surface to the player (or null to detach).
+	 * Must be called with a valid surface BEFORE openVideo prepare for seamless
+	 * video; the prepare still completes without one (audio-only).
+	 */
+	fun bindSurface(surface: Surface?) {
+		mediaPlayer?.setSurface(surface)
+	}
+
+	/** GIF bytes for the view layer, cached for one URL; full headers, explicit load. */
+	suspend fun loadGifBytes(item: BooruMediaItem): ByteArray {
+		gifBytesCache?.takeIf { it.first == item.url }?.let { return it.second }
+		val headers = BooruStreamHeaders.forStream(mangaRepositoryFactory, mangaLoaderContext, item.source, item.url)
+		val request = Request.Builder().url(item.url)
+		val builder = okhttp3.Headers.Builder()
+		for ((k, v) in headers) builder.add(k, v)
+		val bytes = okHttpClient.newCall(request.headers(builder.build()).build()).await().use { response ->
+			if (!response.isSuccessful) throw IOException("HTTP ${response.code} loading GIF")
+			response.body?.bytes() ?: throw IOException("Empty GIF body")
+		}
+		gifBytesCache = item.url to bytes
+		return bytes
+	}
+
+	fun stopPlaybackAndQueueClear() {
+		queue.clear()
+		releaseVideo()
+		setState(PlaybackState.IDLE)
+		stopSelf()
+	}
+
+	// endregion
+
+	// region video engine
+
+	private fun openVideo(item: BooruMediaItem) {
+		releaseVideo()
+		setState(PlaybackState.PREPARING)
+		val headers = BooruStreamHeaders.forStream(mangaRepositoryFactory, mangaLoaderContext, item.source, item.url)
+		val streamProxy = VideoStreamProxy(okHttpClient)
+		val localUrl = try {
+			streamProxy.start(item.url, item.source, headers)
+		} catch (e: Exception) {
+			streamProxy.stop()
+			setState(PlaybackState.IDLE)
+			notifyError(item, 0, 0)
+			return
+		}
+		proxy = streamProxy
+		val player = MediaPlayer()
+		mediaPlayer = player
+		player.setOnPreparedListener { mp ->
+			if (mediaPlayer !== mp) return@setOnPreparedListener
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				runCatching { mp.playbackParams = mp.playbackParams.setSpeed(speed) }
+			}
+			runCatching { mp.isLooping = settings.isMediaVideoLoop || queue.repeatMode == RepeatMode.ONE }
+			requestAudioFocus()
+			mp.start()
+			setState(PlaybackState.PLAYING)
+		}
+		player.setOnCompletionListener { mp ->
+			if (mediaPlayer !== mp) return@setOnCompletionListener
+			autoAdvance()
+		}
+		player.setOnErrorListener { mp, what, extra ->
+			if (mediaPlayer === mp) {
+				releaseVideo()
+				setState(PlaybackState.IDLE)
+				notifyError(item, what, extra)
+			}
+			true
+		}
+		player.setOnVideoSizeChangedListener { mp, w, h ->
+			if (mediaPlayer === mp) {
+				videoWidth = w
+				videoHeight = h
+				onVideoSizeChanged?.invoke(w, h)
+			}
+		}
+		player.setOnInfoListener { mp, what, extra ->
+			onInfo?.invoke(mp, what, extra) == true
+		}
+		try {
+			player.setDataSource(localUrl)
+		} catch (e: Exception) {
+			releaseVideo()
+			setState(PlaybackState.IDLE)
+			notifyError(item, 0, 0)
+			return
+		}
+		player.prepareAsync()
+	}
+
+	private fun autoAdvance() {
+		when (queue.repeatMode) {
+			RepeatMode.ONE -> {
+				mediaPlayer?.let { runCatching { it.seekTo(0); it.start() } } ?: playIndex(queue.index)
+			}
+			else -> {
+				val next = queue.nextIndex()
+				if (next >= 0) playIndex(next) else setState(PlaybackState.IDLE)
+			}
+		}
+	}
+
+	private fun releaseVideo() {
+		runCatching {
+			mediaPlayer?.setOnPreparedListener(null)
+			mediaPlayer?.setOnErrorListener(null)
+			mediaPlayer?.setOnCompletionListener(null)
+			mediaPlayer?.stop()
+			mediaPlayer?.reset()
+			mediaPlayer?.release()
+		}
+		mediaPlayer = null
+		proxy?.stop()
+		proxy = null
+		abandonAudioFocus()
+	}
+
+	// endregion
+
+	// region audio focus
+
+	private fun requestAudioFocus() {
+		audioManager?.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+	}
+
+	private fun abandonAudioFocus() {
+		audioManager?.abandonAudioFocus(null)
+	}
+
+	// endregion
+
+	// region notification
+
+	private fun ensureForeground() {
+		val notification = buildNotification()
+		try {
+			ServiceCompat.startForeground(
+				this, NOTIFICATION_ID, notification,
+				ServiceInfoCompat.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+			)
+		} catch (e: Exception) {
+			// notification permission denied on 33+ or a restricted-start edge:
+			// playback must continue rather than crash the app
+		}
+	}
+
+	private fun updateNotification() {
+		if (!checkNotificationPermission(CHANNEL_ID)) return
+		NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, buildNotification())
+	}
+
+	@SuppressLint("MissingPermission")
+	private fun buildNotification(): Notification {
+		val item = currentItem
+		val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+			.setSmallIcon(R.drawable.ic_play)
+			.setContentTitle(item?.title ?: getString(R.string.media_player_settings))
+			.setContentText(item?.source?.title)
+			.setOngoing(playbackState == PlaybackState.PLAYING)
+			.setPriority(NotificationCompat.PRIORITY_LOW)
+			.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+		val toggleAction = NotificationCompat.Action(
+			if (isVideoPlaying()) R.drawable.ic_action_pause else R.drawable.ic_play,
+			getString(R.string.play),
+			pendingServiceAction(ACTION_TOGGLE),
+		)
+		builder.addAction(toggleAction)
+		builder.addAction(
+			NotificationCompat.Action(R.drawable.ic_clear_all, getString(R.string.clear), pendingServiceAction(ACTION_STOP)),
+		)
+		item?.let {
+			val contentIntent = BooruPlayerActivity.newIntent(this, it)
+			builder.setContentIntent(
+				PendingIntent.getActivity(
+					this, 0, contentIntent,
+					PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+				),
+			)
+		}
+		return builder.build()
+	}
+
+	private fun pendingServiceAction(action: String): PendingIntent {
+		val intent = Intent(this, BooruMediaService::class.java).setAction(action)
+		return PendingIntent.getService(
+			this, action.hashCode(), intent,
+			PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+		)
+	}
+
+	private fun createNotificationChannel() {
+		NotificationManagerCompat.from(this).createNotificationChannel(
+			NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
+				.setName(getString(R.string.media_player_settings))
+				.setShowBadge(false)
+				.build(),
+		)
+	}
+
+	// endregion
+
+	companion object {
+
+		const val CHANNEL_ID = "booru_media"
+		private const val NOTIFICATION_ID = 7401
+		const val ACTION_TOGGLE = "org.wastaken.kotatsu.api21.booru.media.TOGGLE"
+		const val ACTION_NEXT = "org.wastaken.kotatsu.api21.booru.media.NEXT"
+		const val ACTION_PREV = "org.wastaken.kotatsu.api21.booru.media.PREV"
+		const val ACTION_STOP = "org.wastaken.kotatsu.api21.booru.media.STOP"
+
+		fun start(context: Context) {
+			ContextCompat.startForegroundService(context, Intent(context, BooruMediaService::class.java))
+		}
+	}
+
+	private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
+		enqueue(object : Callback {
+			override fun onResponse(call: Call, response: Response) {
+				cont.resume(response)
+			}
+
+			override fun onFailure(call: Call, e: IOException) {
+				if (cont.isCancelled) return
+				cont.resumeWithException(e)
+			}
+		})
+		cont.invokeOnCancellation { cancel() }
+	}
+}
