@@ -1042,6 +1042,7 @@
 	<string name="media_export_done">Exported</string>
 	<string name="media_import_done">Imported</string>
 	<string name="media_import_skipped">%1$d items skipped: source unavailable</string>
+	<string name="media_import_queue_confirm">%1$d items will be imported. Replace the queue or append to it?</string>
 	<string name="media_import_invalid">Invalid or unsupported file</string>
 	<string name="media_replace_queue">Replace queue</string>
 	<string name="media_append_queue">Append to queue</string>

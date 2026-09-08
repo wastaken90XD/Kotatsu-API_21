@@ -541,24 +541,7 @@ class BooruPlayerActivity :
 	}
 
 	private fun showQueueDialog() {
-		val service = service ?: return
-		val items = service.queue.items
-		if (items.isEmpty()) {
-			Toast.makeText(this, R.string.media_queue_empty, Toast.LENGTH_SHORT).show()
-			return
-		}
-		AlertDialog.Builder(this)
-			.setTitle(R.string.media_queue_title)
-			.setSingleChoiceItems(
-				items.map { it.title }.toTypedArray(),
-				service.queue.index,
-			) { dialog, which ->
-				service.playIndex(which)
-				dialog.dismiss()
-			}
-			.setNeutralButton(R.string.clear) { _, _ -> service.stopPlaybackAndQueueClear(); finish() }
-			.setNegativeButton(R.string.close, null)
-			.show()
+		BooruQueueSheetFragment.show(this)
 	}
 
 	private fun openFloating() {

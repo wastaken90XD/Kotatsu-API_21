@@ -822,6 +822,31 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_MEDIA_QUEUE_PERSIST = "media_queue_persist"
 		const val KEY_MEDIA_QUEUE_REPEAT = "media_queue_repeat"
 		const val KEY_MEDIA_QUEUE_SHUFFLE = "media_queue_shuffle"
+
+		/** Every key owned by Settings → "Media player" (settings import/export + diff). */
+		@JvmField
+		val MEDIA_KEYS: Set<String> = setOf(
+			KEY_MEDIA_BLUR_THUMBNAILS,
+			KEY_MEDIA_BLUR_INTENSITY,
+			KEY_MEDIA_GIF_TAP_ACTION,
+			KEY_MEDIA_VIDEO_TAP_ACTION,
+			KEY_MEDIA_DEFAULT_PLAYER_MODE,
+			KEY_MEDIA_GIF_LOOP,
+			KEY_MEDIA_GIF_FRAME_CONTROLS,
+			KEY_MEDIA_VIDEO_LOOP,
+			KEY_MEDIA_DEFAULT_SPEED,
+			KEY_MEDIA_SKIP_INTERVAL,
+			KEY_MEDIA_FLOATING_SIZE,
+			KEY_MEDIA_FLOATING_POSITION,
+			KEY_MEDIA_FLOATING_LOCK,
+			KEY_MEDIA_VOLUME_GESTURE,
+			KEY_MEDIA_BRIGHTNESS_GESTURE,
+			KEY_MEDIA_PINCH_ZOOM,
+			KEY_MEDIA_ASPECT_RATIO,
+			KEY_MEDIA_QUEUE_PERSIST,
+			KEY_MEDIA_QUEUE_REPEAT,
+			KEY_MEDIA_QUEUE_SHUFFLE,
+		)
 		const val KEY_GRID_SIZE_PAGES = "grid_size_pages"
 		const val KEY_REMOTE_SOURCES = "remote_sources"
 		const val KEY_LOCAL_STORAGE = "local_storage"

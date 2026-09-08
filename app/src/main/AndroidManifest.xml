@@ -328,6 +328,10 @@
 			android:launchMode="singleTask"
 			android:label="@string/media_player_settings"
 			android:screenOrientation="sensorLandscape" />
+		<activity
+			android:name="org.wastaken.kotatsu.api21.booru.media.ui.BooruPlaylistsActivity"
+			android:exported="false"
+			android:label="@string/media_playlists" />
 		<service
 			android:name="org.wastaken.kotatsu.api21.local.ui.LocalIndexUpdateService"
 			android:label="@string/local_manga_processing" />

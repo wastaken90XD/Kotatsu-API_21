@@ -281,4 +281,55 @@
 		<item>11</item>
 	</string-array>
 
+	<!-- Booru media player settings (display labels; values are assigned programmatically) -->
+	<string-array name="media_gif_tap_entries">
+		<item>@string/media_tap_load_inline</item>
+		<item>@string/media_tap_open_detail</item>
+	</string-array>
+	<string-array name="media_video_tap_entries">
+		<item>@string/media_tap_play_in_app</item>
+		<item>@string/media_tap_add_to_queue</item>
+		<item>@string/media_tap_open_detail</item>
+	</string-array>
+	<string-array name="media_player_mode_entries">
+		<item>@string/media_mode_fullscreen</item>
+		<item>@string/media_mode_inline</item>
+		<item>@string/media_mode_floating</item>
+	</string-array>
+	<string-array name="media_speed_entries" translatable="false">
+		<item>0.5×</item>
+		<item>1×</item>
+		<item>1.25×</item>
+		<item>1.5×</item>
+		<item>2×</item>
+	</string-array>
+	<string-array name="media_skip_entries" translatable="false">
+		<item>5s</item>
+		<item>10s</item>
+		<item>15s</item>
+		<item>30s</item>
+	</string-array>
+	<string-array name="media_floating_size_entries">
+		<item>@string/media_size_small</item>
+		<item>@string/media_size_medium</item>
+		<item>@string/media_size_large</item>
+	</string-array>
+	<string-array name="media_floating_position_entries">
+		<item>@string/media_pos_top_right</item>
+		<item>@string/media_pos_bottom_right</item>
+		<item>@string/media_pos_bottom_left</item>
+	</string-array>
+	<string-array name="media_ratio_entries">
+		<item>@string/media_ratio_fit</item>
+		<item>@string/media_ratio_fill</item>
+		<item>@string/media_ratio_crop</item>
+		<item>@string/media_ratio_16_9</item>
+		<item>@string/media_ratio_4_3</item>
+	</string-array>
+	<string-array name="media_repeat_entries">
+		<item>@string/media_repeat_none</item>
+		<item>@string/media_repeat_one</item>
+		<item>@string/media_repeat_all</item>
+	</string-array>
+
 </resources>
