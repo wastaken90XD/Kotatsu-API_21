@@ -77,7 +77,6 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 
 	@MangaHttpClient
 	@Inject
-	@MangaHttpClient
 	lateinit var okHttpClient: OkHttpClient
 
 	@Inject
