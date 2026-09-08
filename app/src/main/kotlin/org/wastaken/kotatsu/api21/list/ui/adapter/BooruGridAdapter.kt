@@ -13,17 +13,38 @@ import org.wastaken.kotatsu.api21.list.ui.size.StaticItemSizeResolver
  * only applied here; standard grids are untouched. Isolated: deleting this class, its
  * delegate and the RemoteListFragment/RemoteListViewModel branches removes the feature
  * completely.
+ *
+ * [inlineGifRegistry] holds the explicit per-card GIF "Load GIF" state across
+ * rebinding; the fragment resolves the file URL and calls
+ * [onInlineGifResolved] to swap the still cover for the animated file.
  */
 class BooruGridAdapter(
 	listener: MangaListListener,
 	private val spanCount: Int,
+	val inlineGifRegistry: BooruInlineGifRegistry = BooruInlineGifRegistry(),
 ) : MangaListAdapter(
 	listener = listener,
 	sizeResolver = StaticItemSizeResolver(0), // unused: MANGA_GRID items are never emitted here
 ) {
 
+	/** 0 = off; chained via BlurTransformation onto each cover request ("Blur thumbnails"). */
+	var blurRadius: Int = 0
+
 	init {
-		addDelegate(ListItemType.BOORU_GRID, booruGridItemAD(resolveThumbnailSize(spanCount), listener))
+		addDelegate(
+			ListItemType.BOORU_GRID,
+			booruGridItemAD(resolveThumbnailSize(spanCount), inlineGifRegistry, { blurRadius }, listener),
+		)
+	}
+
+	fun markInlineGifRequested(mangaId: Long) {
+		inlineGifRegistry.request(mangaId)
+		notifyDataSetChanged()
+	}
+
+	fun onInlineGifResolved(mangaId: Long, fileUrl: String) {
+		inlineGifRegistry.resolve(mangaId, fileUrl)
+		notifyDataSetChanged()
 	}
 
 	private companion object {

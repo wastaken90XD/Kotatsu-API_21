@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.plus
 import org.wastaken.kotatsu.api21.R
+import org.wastaken.kotatsu.api21.booru.media.BooruMediaItem
+import org.wastaken.kotatsu.api21.booru.media.BooruMediaResolver
+import org.wastaken.kotatsu.api21.booru.media.BooruMediaType
 import org.wastaken.kotatsu.api21.core.model.MangaSource
 import org.wastaken.kotatsu.api21.core.model.distinctById
 import org.wastaken.kotatsu.api21.core.model.unwrap
@@ -56,7 +59,7 @@ private const val FILTER_MIN_INTERVAL = 250L
 @HiltViewModel
 open class RemoteListViewModel @Inject constructor(
 	savedStateHandle: SavedStateHandle,
-	mangaRepositoryFactory: MangaRepository.Factory,
+	private val mangaRepositoryFactory: MangaRepository.Factory,
 	final override val filterCoordinator: FilterCoordinator,
 	settings: AppSettings,
 	protected val mangaListMapper: MangaListMapper,
@@ -69,6 +72,66 @@ open class RemoteListViewModel @Inject constructor(
 	val isRandomLoading = MutableStateFlow(false)
 	val onOpenManga = MutableEventFlow<Manga>()
 	val onImageSaved = MutableEventFlow<Collection<Uri>>()
+
+	/** Route to the booru full-screen player (video/GIF posts only). */
+	val onBooruMediaRoute = MutableEventFlow<BooruMediaItem>()
+
+	/** Emitted when an item lands in the media queue (fragment shows the toast). */
+	val onBooruMediaQueued = MutableEventFlow<BooruMediaItem>()
+
+	/** Inline GIF load finished resolving: (manga id, file url). */
+	val onInlineGifResolved = MutableEventFlow<Pair<Long, String>>()
+
+	/** Inline GIF resolution failed/returned non-GIF: manga id. */
+	val onInlineGifFailed = MutableEventFlow<Long>()
+
+	/**
+	 * Resolves the post's file URL and routes media posts to the booru player.
+	 * Static posts and failures fall back to [fallback] on the main thread.
+	 */
+	fun routeBooruPost(manga: Manga, fallback: () -> Unit) {
+		launchLoadingJob(Dispatchers.Main) {
+			val item = runCatching { BooruMediaResolver.resolve(mangaRepositoryFactory, manga) }.getOrNull()
+			if (item != null) {
+				onBooruMediaRoute.call(item)
+			} else {
+				fallback()
+			}
+		}
+	}
+
+	/** Adds the post to the media queue without starting playback. */
+	fun enqueueBooruPost(manga: Manga) {
+		launchLoadingJob(Dispatchers.Main) {
+			val item = runCatching { BooruMediaResolver.resolve(mangaRepositoryFactory, manga) }.getOrNull()
+			if (item != null) {
+				onBooruMediaQueued.call(item)
+			} else {
+				onError.call(NullPointerException("Not a media post"))
+			}
+		}
+	}
+
+	/** Resolves the post and, if it is a GIF, queues it for playback. */
+	fun enqueueBooruGif(manga: Manga) = enqueueBooruPost(manga)
+
+	/**
+	 * "GIF tap action" = INLINE: fetch the file and hand it to the grid card
+	 * so the still cover is swapped for the animated one (explicit load).
+	 */
+	fun beginInlineGifLoad(manga: Manga) {
+		launchLoadingJob(Dispatchers.Default) {
+			val pair = runCatching {
+				val item = BooruMediaResolver.resolve(mangaRepositoryFactory, manga)
+				item?.takeIf { it.mediaType == BooruMediaType.GIF }?.let { manga.id to it.url }
+			}.getOrNull()
+			if (pair != null) {
+				onInlineGifResolved.call(pair)
+			} else {
+				onInlineGifFailed.call(manga.id)
+			}
+		}
+	}
 
 	/**
 	 * Long-press save on the booru grid. STRICTLY booru-only: the internal guard

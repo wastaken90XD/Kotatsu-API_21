@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.wastaken.kotatsu.api21.booru.media.BooruMediaItem
+import org.wastaken.kotatsu.api21.booru.media.BooruMediaResolver
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -92,6 +95,26 @@ class DetailsViewModel @Inject constructor(
 	private var loadingJob: Job
 	val mangaId = intent.mangaId
 	val onImageSaved = MutableEventFlow<Collection<Uri>>()
+
+	/** Route to the booru full-screen player (GIF/video posts from the read button). */
+	val onBooruMediaRoute = MutableEventFlow<BooruMediaItem>()
+
+	/**
+	 * Booru read-button routing (media spec): media posts never open the reader,
+	 * they resolve to the booru player; static posts run [fallback] (main thread).
+	 */
+	fun routeBooruPost(manga: Manga, fallback: () -> Unit) {
+		viewModelScope.launch(Dispatchers.Main) {
+			val item = runCatching {
+				BooruMediaResolver.resolve(mangaRepositoryFactory, manga)
+			}.getOrNull()
+			if (item != null) {
+				onBooruMediaRoute.call(item)
+			} else {
+				fallback()
+			}
+		}
+	}
 
 	init {
 		mangaDetails.value = intent.manga?.let { MangaDetails(it) }

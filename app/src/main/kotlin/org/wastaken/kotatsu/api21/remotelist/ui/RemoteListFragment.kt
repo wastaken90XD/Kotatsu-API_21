@@ -13,8 +13,15 @@ import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.drop
+import androidx.appcompat.widget.PopupMenu
 import org.wastaken.kotatsu.api21.R
+import org.wastaken.kotatsu.api21.booru.media.BooruMediaService
+import org.wastaken.kotatsu.api21.booru.media.BooruMediaType
+import org.wastaken.kotatsu.api21.booru.media.GifTapAction
+import org.wastaken.kotatsu.api21.booru.media.VideoTapAction
+import org.wastaken.kotatsu.api21.booru.media.ui.BooruPlayerActivity
 import org.wastaken.kotatsu.api21.core.model.getTitle
+import org.wastaken.kotatsu.api21.search.ui.MangaListActivity
 import org.wastaken.kotatsu.api21.core.nav.router
 import org.wastaken.kotatsu.api21.core.prefs.ListMode
 import org.wastaken.kotatsu.api21.core.ui.list.ListSelectionController
@@ -55,9 +62,17 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	/** Live-applies the booru grid column setting (existing AppSettings listener pattern). */
 	private val booruColumnsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-		if (key == AppSettings.KEY_BOORU_GRID_COLUMNS) {
-			onBooruGridColumnsChanged()
+		when (key) {
+			AppSettings.KEY_BOORU_GRID_COLUMNS -> onBooruGridColumnsChanged()
+			AppSettings.KEY_MEDIA_BLUR_THUMBNAILS, AppSettings.KEY_MEDIA_BLUR_INTENSITY -> {
+				applyBooruBlur()
+				booruAdapter?.notifyDataSetChanged()
+			}
 		}
+	}
+
+	private fun applyBooruBlur() {
+		booruAdapter?.blurRadius = if (settings.isMediaBlurThumbnails) settings.mediaBlurIntensity else 0
 	}
 
 	override val filterCoordinator: FilterCoordinator
@@ -75,6 +90,16 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 		viewModel.isRandomLoading.observe(viewLifecycleOwner, MenuInvalidator(requireActivity()))
 		viewModel.onOpenManga.observeEvent(viewLifecycleOwner) { router.openDetails(it) }
 		viewModel.onImageSaved.observeEvent(viewLifecycleOwner, PagesSavedObserver(binding.recyclerView))
+		viewModel.onBooruMediaRoute.observeEvent(viewLifecycleOwner) { item ->
+			BooruPlayerActivity.start(requireContext(), item)
+		}
+		viewModel.onBooruMediaQueued.observeEvent(viewLifecycleOwner) { item -> enqueueIntoService(item) }
+		viewModel.onInlineGifResolved.observeEvent(viewLifecycleOwner) { (id, url) ->
+			booruAdapter?.onInlineGifResolved(id, url)
+		}
+		viewModel.onInlineGifFailed.observeEvent(viewLifecycleOwner) {
+			booruAdapter?.notifyDataSetChanged()
+		}
 		settings.subscribe(booruColumnsListener)
 		filterCoordinator.observe().distinctUntilChangedBy { it.listFilter.isEmpty() }
 			.drop(1)
@@ -87,7 +112,10 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 		return if (viewModel.isBooru) {
 			// booru sources are browsed as a square-thumbnail grid (see BooruGridAdapter);
 			// all other sources keep the standard manga tiles untouched
-			BooruGridAdapter(this, settings.booruGridColumns).also { booruAdapter = it }
+			BooruGridAdapter(this, settings.booruGridColumns).also {
+				booruAdapter = it
+				applyBooruBlur()
+			}
 		} else {
 			super.onCreateAdapter()
 		}
@@ -155,14 +183,97 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 		viewModel.loadNextPage()
 	}
 
+	override fun onItemClick(item: MangaListModel, view: View) {
+		if (viewModel.isBooru && item is BooruGridModel) {
+			onBooruTileClick(item)
+			return
+		}
+		super.onItemClick(item, view)
+	}
+
 	override fun onItemLongClick(item: MangaListModel, view: View): Boolean {
 		if (viewModel.isBooru && item is BooruGridModel) {
-			// booru grid: long-press saves the post's image directly (same pipeline
-			// as the details-screen save action; honors the original-bytes preference)
-			viewModel.saveBooruImage(pageSaveHelper, item.manga)
+			showBooruTileMenu(item, view)
 			return true
 		}
 		return super.onItemLongClick(item, view)
+	}
+
+	/**
+	 * Booru tile tap routing (media system spec): GIF and VIDEO posts are
+	 * handled by their configured tap actions and never reach the reader;
+	 * static posts keep the default detail side panel.
+	 */
+	private fun onBooruTileClick(model: BooruGridModel) {
+		when (model.mediaType) {
+			BooruMediaType.GIF -> when (settings.mediaGifTapAction) {
+				GifTapAction.INLINE -> {
+					val adapter = booruAdapter
+					if (adapter != null && adapter.inlineGifRegistry.isResolved(model.manga.id)) {
+						// already loaded inline — second tap expands to the player
+						viewModel.routeBooruPost(model.manga) { openDetailsOrPreview(model) }
+					} else {
+						adapter?.markInlineGifRequested(model.manga.id)
+						viewModel.beginInlineGifLoad(model.manga)
+					}
+				}
+				GifTapAction.OPEN_DETAIL -> openDetailsOrPreview(model)
+			}
+			BooruMediaType.VIDEO -> when (settings.mediaVideoTapAction) {
+				VideoTapAction.PLAY_IN_APP -> viewModel.routeBooruPost(model.manga) { openDetailsOrPreview(model) }
+				VideoTapAction.ADD_TO_QUEUE -> viewModel.enqueueBooruPost(model.manga)
+				VideoTapAction.OPEN_DETAIL -> openDetailsOrPreview(model)
+			}
+			null -> openDetailsOrPreview(model)
+		}
+	}
+
+	private fun openDetailsOrPreview(model: BooruGridModel) {
+		val manga = model.toMangaWithOverride()
+		if ((activity as? MangaListActivity)?.showPreview(manga) != true) {
+			router.openDetails(manga)
+		}
+	}
+
+	/**
+	 * "Add to queue" for the booru media service: binds on demand, appends,
+	 * immediately releases the binding. The started service keeps the queue alive.
+	 */
+	private fun enqueueIntoService(item: org.wastaken.kotatsu.api21.booru.media.BooruMediaItem) {
+		val context = context ?: return
+		BooruMediaService.start(context)
+		context.bindService(
+			android.content.Intent(context, BooruMediaService::class.java),
+			object : android.content.ServiceConnection {
+				override fun onServiceConnected(name: android.content.ComponentName?, binder: android.os.IBinder?) {
+					(binder as? BooruMediaService.LocalBinder)?.service?.queue?.add(item)
+					runCatching { context.unbindService(this) }
+					Snackbar.make(binding.recyclerView, R.string.media_queued_toast, Snackbar.LENGTH_SHORT).show()
+				}
+
+				override fun onServiceDisconnected(name: android.content.ComponentName?) = Unit
+			},
+			android.content.Context.BIND_AUTO_CREATE,
+		)
+	}
+
+	private fun showBooruTileMenu(model: BooruGridModel, anchor: View) {
+		val menu = PopupMenu(requireContext(), anchor)
+		val isMedia = model.mediaType != null
+		menu.menu.add(0, ACTION_PLAY, 0, R.string.play).isEnabled = isMedia
+		menu.menu.add(0, ACTION_ADD_TO_QUEUE, 1, R.string.media_add_to_queue).isEnabled = isMedia
+		menu.menu.add(0, ACTION_SAVE, 2, R.string.media_save_image_video)
+		menu.menu.add(0, ACTION_OPEN_DETAIL, 3, R.string.media_tap_open_detail)
+		menu.setOnMenuItemClickListener { menuItem ->
+			when (menuItem.itemId) {
+				ACTION_PLAY -> viewModel.routeBooruPost(model.manga) { openDetailsOrPreview(model) }
+				ACTION_ADD_TO_QUEUE -> viewModel.enqueueBooruPost(model.manga)
+				ACTION_SAVE -> viewModel.saveBooruImage(pageSaveHelper, model.manga)
+				ACTION_OPEN_DETAIL -> openDetailsOrPreview(model)
+			}
+			true
+		}
+		menu.show()
 	}
 
 	override fun onCreateActionMode(
@@ -255,6 +366,13 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 		/** Extra recycled views kept around to avoid rebinding on slow scroll (weak hardware). */
 		private const val BOORU_VIEW_CACHE_SIZE = 6
+
+		// booru tile long-press menu ids (PopupMenu, no xml — actions compose at runtime
+		// because Play/Add-to-queue enablement depends on the tile's media classification)
+		private const val ACTION_PLAY = 1
+		private const val ACTION_ADD_TO_QUEUE = 2
+		private const val ACTION_SAVE = 3
+		private const val ACTION_OPEN_DETAIL = 4
 
 		fun newInstance(source: MangaSource) = RemoteListFragment().withArgs(1) {
 			putString(ARG_SOURCE, source.name)
