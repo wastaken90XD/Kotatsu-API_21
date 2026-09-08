@@ -26,7 +26,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.wastaken.kotatsu.api21.R
-import org.wastaken.kotatsu.api21.core.network.MangaLoaderContext
+import org.koitharu.kotatsu.parsers.MangaLoaderContext
 import org.wastaken.kotatsu.api21.core.network.MangaHttpClient
 import org.wastaken.kotatsu.api21.core.parser.MangaRepository
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
@@ -77,6 +77,7 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 
 	@MangaHttpClient
 	@Inject
+	@MangaHttpClient
 	lateinit var okHttpClient: OkHttpClient
 
 	@Inject
@@ -441,7 +442,7 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 		val builder = NotificationCompat.Builder(this, CHANNEL_ID)
 			.setSmallIcon(R.drawable.ic_play)
 			.setContentTitle(item?.title ?: getString(R.string.media_player_settings))
-			.setContentText(item?.source?.title)
+			.setContentText(item?.source?.name)
 			.setOngoing(playbackState == PlaybackState.PLAYING)
 			.setPriority(NotificationCompat.PRIORITY_LOW)
 			.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

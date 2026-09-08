@@ -1,7 +1,7 @@
 package org.wastaken.kotatsu.api21.booru.media
 
 import org.koitharu.kotatsu.parsers.model.MangaSource
-import org.wastaken.kotatsu.api21.core.network.MangaLoaderContext
+import org.koitharu.kotatsu.parsers.MangaLoaderContext
 import org.wastaken.kotatsu.api21.core.parser.MangaRepository
 import org.wastaken.kotatsu.api21.core.parser.ParserMangaRepository
 import java.net.IDN

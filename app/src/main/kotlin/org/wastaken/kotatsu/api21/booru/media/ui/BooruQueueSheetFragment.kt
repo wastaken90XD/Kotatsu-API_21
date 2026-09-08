@@ -243,7 +243,7 @@ class BooruQueueSheetFragment :
 
 			fun bind(item: org.wastaken.kotatsu.api21.booru.media.BooruMediaItem, isCurrent: Boolean) {
 				itemView.findViewById<android.widget.TextView>(R.id.title).text = item.title
-				itemView.findViewById<android.widget.TextView>(R.id.sourceName).text = item.source.title
+				itemView.findViewById<android.widget.TextView>(R.id.sourceName).text = item.source.name
 				itemView.findViewById<android.widget.TextView>(R.id.mediaBadge).text =
 					if (item.mediaType == BooruMediaType.GIF) {
 						getString(R.string.media_gif_badge)
