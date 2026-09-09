@@ -47,6 +47,12 @@
 	<PreferenceCategory android:title="@string/media_player_section">
 
 		<ListPreference
+			android:entries="@array/booru_video_engine_entries"
+			android:key="booru_video_engine"
+			android:title="@string/booru_video_engine"
+			app:useSimpleSummaryProvider="true" />
+
+		<ListPreference
 			android:entries="@array/media_player_mode_entries"
 			android:key="media_default_player_mode"
 			android:title="@string/media_default_player_mode"

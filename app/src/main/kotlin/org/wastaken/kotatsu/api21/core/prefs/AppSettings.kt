@@ -27,6 +27,7 @@ import org.wastaken.kotatsu.api21.core.network.proxy.ProxyType
 import org.wastaken.kotatsu.api21.core.util.ext.connectivityManager
 import org.wastaken.kotatsu.api21.booru.media.AspectRatioMode
 import org.wastaken.kotatsu.api21.booru.media.BooruLongPressAction
+import org.wastaken.kotatsu.api21.booru.media.BooruVideoEngine
 import org.wastaken.kotatsu.api21.booru.media.DefaultPlayerMode
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowPosition
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowSize
@@ -177,6 +178,11 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	var booruLongPressAction: BooruLongPressAction
 		get() = prefs.getEnumValue(KEY_BOORU_LONG_PRESS_ACTION, BooruLongPressAction.DOWNLOAD)
 		set(value) = prefs.edit { putEnumValue(KEY_BOORU_LONG_PRESS_ACTION, value) }
+
+	/** Video decoder used by the booru media player: embedded libVLC or the platform MediaPlayer. */
+	var booruVideoEngine: BooruVideoEngine
+		get() = prefs.getEnumValue(KEY_BOORU_VIDEO_ENGINE, BooruVideoEngine.LIBVLC)
+		set(value) = prefs.edit { putEnumValue(KEY_BOORU_VIDEO_ENGINE, value) }
 
 	/**
 	 * Per-source gate for the built-in media player ("media_player_source_*").
@@ -849,6 +855,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_MEDIA_QUEUE_PERSIST = "media_queue_persist"
 		const val KEY_MEDIA_QUEUE_REPEAT = "media_queue_repeat"
 		const val KEY_MEDIA_QUEUE_SHUFFLE = "media_queue_shuffle"
+		const val KEY_BOORU_VIDEO_ENGINE = "booru_video_engine"
 
 		/** Prefix for the per-source media-player toggles (dynamic keys, not exported). */
 		const val KEY_MEDIA_PLAYER_SOURCE_PREFIX = "media_player_source_"
@@ -877,6 +884,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 			KEY_MEDIA_QUEUE_REPEAT,
 			KEY_MEDIA_QUEUE_SHUFFLE,
 			KEY_BOORU_LONG_PRESS_ACTION,
+			KEY_BOORU_VIDEO_ENGINE,
 		)
 		const val KEY_GRID_SIZE_PAGES = "grid_size_pages"
 		const val KEY_REMOTE_SOURCES = "remote_sources"

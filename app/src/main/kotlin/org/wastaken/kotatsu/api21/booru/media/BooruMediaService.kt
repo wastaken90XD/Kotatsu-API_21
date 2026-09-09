@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.SurfaceTexture
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Binder
@@ -97,8 +98,13 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	private val binder = LocalBinder()
 	private val listeners = ArrayList<Listener>()
 	private var mediaPlayer: MediaPlayer? = null
+	private var vlcPlayer: BooruVlcPlayer? = null
 	private var proxy: VideoStreamProxy? = null
 	private var boundSurface: Surface? = null
+	private var boundSurfaceTexture: SurfaceTexture? = null
+	private var boundTargetWidth = 0
+	private var boundTargetHeight = 0
+	private var videoLooping = false
 	private val handler = android.os.Handler(android.os.Looper.getMainLooper())
 	private var prepareWatchdog: Runnable? = null
 	private var gifBytesCache: Pair<String, ByteArray>? = null
@@ -110,6 +116,16 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	var onVideoSizeChanged: ((width: Int, height: Int) -> Unit)? = null
 
 	var onInfo: ((MediaPlayer, what: Int, extra: Int) -> Boolean)? = null
+
+	/** Engine-neutral buffering signal: system MEDIA_INFO_* and libVLC Buffering both mapped here. */
+	var onBufferingChange: ((buffering: Boolean) -> Unit)? = null
+
+	/** libVLC TimeChanged events drive the seekbar; the system engine is polled by the UI instead. */
+	var onPlaybackProgress: ((positionMs: Int, durationMs: Int) -> Unit)? = null
+
+	/** The engine actually powering the current playback (settings value taken at open time). */
+	val activeVideoEngine: BooruVideoEngine
+		get() = if (vlcPlayer != null) BooruVideoEngine.LIBVLC else BooruVideoEngine.SYSTEM
 
 	var videoWidth = 0
 		private set
@@ -247,6 +263,19 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	}
 
 	fun togglePlayPause() {
+		val vlc = vlcPlayer
+		if (vlc != null) {
+			if (vlc.isPlaying) {
+				vlc.pause()
+				setState(PlaybackState.PAUSED)
+				abandonAudioFocus()
+			} else {
+				requestAudioFocus()
+				vlc.resume()
+				setState(PlaybackState.PLAYING)
+			}
+			return
+		}
 		val player = mediaPlayer ?: return
 		if (player.isPlaying) {
 			player.pause()
@@ -260,23 +289,40 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	}
 
 	fun seekTo(positionMs: Int) {
+		val vlc = vlcPlayer
+		if (vlc != null) {
+			runCatching { vlc.seekTo(positionMs.toLong().coerceAtLeast(0L)) }
+			return
+		}
 		mediaPlayer?.let { player ->
 			runCatching { player.seekTo(positionMs.coerceIn(0, player.duration)) }
 		}
 	}
 
 	fun seekBy(deltaMs: Int) {
-		mediaPlayer?.let { player -> seekTo(player.currentPosition + deltaMs) }
+		seekTo(videoPosition() + deltaMs)
 	}
 
-	fun isVideoPlaying(): Boolean = runCatching { mediaPlayer?.isPlaying == true }.getOrDefault(false)
+	fun isVideoPlaying(): Boolean = runCatching {
+		vlcPlayer?.isPlaying ?: (mediaPlayer?.isPlaying == true)
+	}.getOrDefault(false)
 
-	fun videoDuration(): Int = runCatching { mediaPlayer?.duration ?: 0 }.getOrDefault(0)
+	fun videoDuration(): Int = runCatching {
+		vlcPlayer?.length?.toInt() ?: mediaPlayer?.duration ?: 0
+	}.getOrDefault(0)
 
-	fun videoPosition(): Int = runCatching { mediaPlayer?.currentPosition ?: 0 }.getOrDefault(0)
+	fun videoPosition(): Int = runCatching {
+		vlcPlayer?.time?.toInt() ?: mediaPlayer?.currentPosition ?: 0
+	}.getOrDefault(0)
 
 	fun setSpeed(newSpeed: Float) {
 		speed = newSpeed
+		val vlc = vlcPlayer
+		if (vlc != null) {
+			// libVLC rate control works on every API level (no API-23 gate)
+			runCatching { vlc.setSpeed(newSpeed) }
+			return
+		}
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			runCatching {
 				val player = mediaPlayer ?: return@runCatching
@@ -287,6 +333,7 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	}
 
 	fun setVideoLooping(looping: Boolean) {
+		videoLooping = looping
 		runCatching { mediaPlayer?.isLooping = looping }
 	}
 
@@ -298,9 +345,25 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 	 * (texture-available raced ahead of service bind), which left the player
 	 * surface-less forever - black + silent on Samsung API 21.
 	 */
-	fun bindSurface(surface: Surface?) {
+	fun bindSurface(surface: Surface?, width: Int = 0, height: Int = 0) {
 		boundSurface = surface
+		boundTargetWidth = width
+		boundTargetHeight = height
 		runCatching { mediaPlayer?.setSurface(surface) }
+	}
+
+	/**
+	 * libVLC render target: the RAW SurfaceTexture (never the TextureView, so
+	 * libVLC cannot clobber the UI's own surface listener). Remembers the pair
+	 * like [bindSurface] does, so a texture that races in before openVideo is
+	 * replayed onto the fresh engine; a swap while playing keeps the stream
+	 * running (floating <-> full-screen handoff).
+	 */
+	fun bindSurfaceTexture(surfaceTexture: SurfaceTexture?, width: Int = 0, height: Int = 0) {
+		boundSurfaceTexture = surfaceTexture
+		boundTargetWidth = width
+		boundTargetHeight = height
+		vlcPlayer?.setRenderTarget(surfaceTexture, width, height)
 	}
 
 	/** GIF bytes for the view layer, cached for one URL; full headers, explicit load. */
@@ -343,6 +406,86 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 			return
 		}
 		proxy = streamProxy
+		videoLooping = settings.isMediaVideoLoop || queue.repeatMode == RepeatMode.ONE
+		when (settings.booruVideoEngine) {
+			BooruVideoEngine.LIBVLC -> openVideoVlc(item, localUrl)
+			BooruVideoEngine.SYSTEM -> openVideoSystem(item, localUrl)
+		}
+	}
+
+	/**
+	 * libVLC engine (BooruVlcPlayer). No prepare watchdog: EncounteredError is
+	 * deterministic, unlike the system MediaPlayer's silent-hang bug that guard
+	 * works around. EndReached replaces both isLooping and onCompletion, so the
+	 * loop/repeat logic lives here instead of in the platform player.
+	 */
+	private fun openVideoVlc(item: BooruMediaItem, localUrl: String) {
+		val vlc = try {
+			BooruVlcPlayer(this)
+		} catch (e: Exception) {
+			// native libVLC init failed (e.g. OOM unpacking native libs on a
+			// low-RAM device): fall back to the legacy system engine for this run
+			openVideoSystem(item, localUrl)
+			return
+		}
+		vlcPlayer = vlc
+		vlc.callback = object : BooruVlcPlayer.Callback {
+			override fun onPlaying(videoWidth: Int, videoHeight: Int) {
+				if (vlcPlayer !== vlc) return
+				if (videoWidth > 0 && videoHeight > 0) {
+					this@BooruMediaService.videoWidth = videoWidth
+					this@BooruMediaService.videoHeight = videoHeight
+					onVideoSizeChanged?.invoke(videoWidth, videoHeight)
+				}
+				runCatching { vlc.setSpeed(speed) }
+				requestAudioFocus()
+				setState(PlaybackState.PLAYING)
+			}
+
+			override fun onBuffering(percent: Float) {
+				if (vlcPlayer !== vlc) return
+				onBufferingChange?.invoke(percent < 100f)
+			}
+
+			override fun onEncounteredError() {
+				if (vlcPlayer !== vlc) return
+				releaseVideo()
+				setState(PlaybackState.IDLE)
+				notifyError(item, 0, 0)
+			}
+
+			override fun onEndReached() {
+				if (vlcPlayer !== vlc) return
+				if (videoLooping) {
+					runCatching {
+						vlc.seekTo(0)
+						vlc.resume()
+					}
+				} else {
+					val next = queue.nextIndex()
+					if (next >= 0) playIndex(next) else setState(PlaybackState.IDLE)
+				}
+			}
+
+			override fun onTimeChanged(positionMs: Long) {
+				if (vlcPlayer !== vlc) return
+				onPlaybackProgress?.invoke(positionMs.toInt(), vlc.length.toInt())
+			}
+		}
+		// a texture that raced in during proxy start is remembered; replay it so
+		// the fresh engine never starts surface-less (same contract as bindSurface)
+		boundSurfaceTexture?.let { vlc.setRenderTarget(it, boundTargetWidth, boundTargetHeight) }
+		try {
+			vlc.play(localUrl)
+		} catch (e: Exception) {
+			releaseVideo()
+			setState(PlaybackState.IDLE)
+			notifyError(item, 0, 0)
+		}
+	}
+
+	/** Legacy system MediaPlayer engine (BooruVideoEngine.SYSTEM), pre-libVLC behavior verbatim. */
+	private fun openVideoSystem(item: BooruMediaItem, localUrl: String) {
 		val player = MediaPlayer()
 		mediaPlayer = player
 		player.setOnPreparedListener { mp ->
@@ -354,7 +497,7 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 				runCatching { mp.playbackParams = mp.playbackParams.setSpeed(speed) }
 			}
-			runCatching { mp.isLooping = settings.isMediaVideoLoop || queue.repeatMode == RepeatMode.ONE }
+			runCatching { mp.isLooping = videoLooping }
 			requestAudioFocus()
 			mp.start()
 			setState(PlaybackState.PLAYING)
@@ -379,6 +522,10 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 			}
 		}
 		player.setOnInfoListener { mp, what, extra ->
+			when (what) {
+				MediaPlayer.MEDIA_INFO_BUFFERING_START -> onBufferingChange?.invoke(true)
+				MediaPlayer.MEDIA_INFO_BUFFERING_END -> onBufferingChange?.invoke(false)
+			}
 			onInfo?.invoke(mp, what, extra) == true
 		}
 		try {
@@ -428,6 +575,8 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 
 	private fun releaseVideo() {
 		cancelPrepareWatchdog()
+		runCatching { vlcPlayer?.release() }
+		vlcPlayer = null
 		runCatching {
 			mediaPlayer?.setOnPreparedListener(null)
 			mediaPlayer?.setOnErrorListener(null)
@@ -437,6 +586,7 @@ class BooruMediaService : Service(), BooruMediaQueue.Listener {
 			mediaPlayer?.release()
 		}
 		mediaPlayer = null
+		videoLooping = false
 		proxy?.stop()
 		proxy = null
 		abandonAudioFocus()

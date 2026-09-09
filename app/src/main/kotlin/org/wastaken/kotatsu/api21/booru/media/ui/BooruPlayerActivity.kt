@@ -9,7 +9,6 @@ import android.graphics.Matrix
 import android.graphics.Movie
 import android.graphics.SurfaceTexture
 import android.media.AudioManager
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -38,6 +37,7 @@ import org.wastaken.kotatsu.api21.booru.media.BooruMediaItem
 import org.wastaken.kotatsu.api21.booru.media.BooruMediaQueue
 import org.wastaken.kotatsu.api21.booru.media.BooruMediaService
 import org.wastaken.kotatsu.api21.booru.media.BooruMediaType
+import org.wastaken.kotatsu.api21.booru.media.BooruVideoEngine
 import org.wastaken.kotatsu.api21.core.model.MangaSource
 import org.wastaken.kotatsu.api21.core.model.UnknownMangaSource
 import org.wastaken.kotatsu.api21.core.prefs.AppSettings
@@ -70,6 +70,9 @@ class BooruPlayerActivity :
 	private var serviceBound = false
 	private var pendingItem: BooruMediaItem? = null
 	private var surface: Surface? = null
+	private var surfaceTex: SurfaceTexture? = null
+	private var surfaceW = 0
+	private var surfaceH = 0
 	private var controlsVisible = true
 	private var locked = false
 	private var isSeeking = false
@@ -108,10 +111,23 @@ class BooruPlayerActivity :
 					videoAspect = if (h > 0) w.toFloat() / h else 0f
 					applyAspectMode()
 				}
-				service.onInfo = { mp, what, _ -> onMediaInfo(mp, what) }
+				// engine-neutral: system MEDIA_INFO_* and libVLC Buffering land here alike
+				service.onBufferingChange = { buffering ->
+					viewBinding.bufferingProgress.visibility = if (buffering) View.VISIBLE else View.GONE
+				}
+				// libVLC TimeChanged events drive the seekbar (system engine is polled)
+				service.onPlaybackProgress = { position, duration ->
+					if (!isSeeking && duration > 0) {
+						viewBinding.seekBar.max = duration
+						viewBinding.seekBar.progress = position
+						viewBinding.textDuration.text = formatTime(duration)
+						viewBinding.textPosition.text = formatTime(position)
+					}
+				}
 				// the texture may have become available before the bind landed;
 				// re-push the saved surface so it is never lost on connect
-				surface?.let { service.bindSurface(it) }
+				surface?.let { service.bindSurface(it, surfaceW, surfaceH) }
+				surfaceTex?.let { service.bindSurfaceTexture(it, surfaceW, surfaceH) }
 				onQueueChanged()
 				onPlaybackStateChanged(service.playbackState, service.currentItem)
 				val item = pendingItem
@@ -183,9 +199,11 @@ class BooruPlayerActivity :
 		service?.removeListener(this)
 		service?.queue?.removeListener(this)
 		service?.bindSurface(null)
+		service?.bindSurfaceTexture(null)
 		if (serviceBound) unbindService(connection)
 		surface?.release()
 		surface = null
+		surfaceTex = null
 		handler.removeCallbacksAndMessages(null)
 		super.onDestroy()
 	}
@@ -195,15 +213,25 @@ class BooruPlayerActivity :
 	override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
 		val s = Surface(surfaceTexture)
 		surface = s
-		service?.bindSurface(s)
+		surfaceTex = surfaceTexture
+		surfaceW = width
+		surfaceH = height
+		service?.bindSurface(s, width, height)
+		service?.bindSurfaceTexture(surfaceTexture, width, height)
 	}
 
-	override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) = Unit
+	override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+		surfaceW = width
+		surfaceH = height
+		service?.bindSurfaceTexture(surfaceTexture, width, height)
+	}
 
 	override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean {
 		service?.bindSurface(null)
+		service?.bindSurfaceTexture(null)
 		surface?.release()
 		surface = null
+		surfaceTex = null
 		return true
 	}
 
@@ -287,7 +315,7 @@ class BooruPlayerActivity :
 		viewBinding.videoControlsRow.visibility = if (isVideo) View.VISIBLE else View.GONE
 		viewBinding.gifControlsRow.visibility = if (isVideo) View.GONE else View.VISIBLE
 		viewBinding.buttonSpeed.visibility =
-			if (isVideo && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) View.VISIBLE else View.GONE
+			if (isVideo && isSpeedControlAvailable) View.VISIBLE else View.GONE
 		viewBinding.buttonSpeed.text = speedLabel(currentSpeed)
 		viewBinding.mediaSurfaceFrame.fixedAspectRatio = 0f
 		viewBinding.mediaSurfaceFrame.scaleX = 1f
@@ -458,8 +486,13 @@ class BooruPlayerActivity :
 		viewBinding.buttonLoop.alpha = if (on) 1f else 0.5f
 	}
 
+	/** System MediaPlayer needs API 23+ for rate control; libVLC supports it everywhere. */
+	private val isSpeedControlAvailable: Boolean
+		get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ||
+			settings.booruVideoEngine == BooruVideoEngine.LIBVLC
+
 	private fun showSpeedDialog() {
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+		if (!isSpeedControlAvailable) return
 		val speeds = floatArrayOf(0.5f, 1f, 1.25f, 1.5f, 2f)
 		val labels = speeds.map { speedLabel(it) }.toTypedArray()
 		AlertDialog.Builder(this)
@@ -592,6 +625,9 @@ class BooruPlayerActivity :
 	private fun refreshPositionUi() {
 		if (isSeeking) return
 		val service = service ?: return
+		// libVLC TimeChanged events already feed the seekbar; the poll is the
+		// system engine's update path
+		if (service.activeVideoEngine == BooruVideoEngine.LIBVLC) return
 		val duration = service.videoDuration()
 		val position = service.videoPosition()
 		if (duration > 0) {
@@ -633,17 +669,14 @@ class BooruPlayerActivity :
 		finish()
 	}
 
-	private fun onMediaInfo(mp: MediaPlayer, what: Int): Boolean {
-		when (what) {
-			MediaPlayer.MEDIA_INFO_BUFFERING_START -> viewBinding.bufferingProgress.visibility = View.VISIBLE
-			MediaPlayer.MEDIA_INFO_BUFFERING_END -> viewBinding.bufferingProgress.visibility = View.GONE
-		}
-		return true
-	}
-
 	override fun onConfigurationChanged(newConfig: Configuration) {
 		super.onConfigurationChanged(newConfig)
 		applyAspectMode()
+		// the TextureView resized without a new SurfaceTexture: re-push the
+		// target size so libVLC's window follows the rotation
+		viewBinding.videoTexture.post {
+			surfaceTex?.let { service?.bindSurfaceTexture(it, viewBinding.videoTexture.width, viewBinding.videoTexture.height) }
+		}
 	}
 
 	// endregion

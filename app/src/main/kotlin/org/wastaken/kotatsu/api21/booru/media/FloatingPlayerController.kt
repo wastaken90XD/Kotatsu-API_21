@@ -74,14 +74,18 @@ class FloatingPlayerController(
 
 		texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
 			override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-				service.bindSurface(Surface(surface))
+				service.bindSurface(Surface(surface), width, height)
+				service.bindSurfaceTexture(surface, width, height)
 			}
 
-			override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) = Unit
+			override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+				service.bindSurfaceTexture(surface, width, height)
+			}
 
 			override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
 				surface.release()
 				service.bindSurface(null)
+				service.bindSurfaceTexture(null)
 				return true
 			}
 
@@ -112,6 +116,7 @@ class FloatingPlayerController(
 	fun hide() {
 		val view = rootView ?: return
 		service.bindSurface(null)
+		service.bindSurfaceTexture(null)
 		runCatching { windowManager.removeView(view) }
 		rootView = null
 		textureView = null

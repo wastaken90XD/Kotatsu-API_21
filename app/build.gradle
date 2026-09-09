@@ -78,6 +78,9 @@ android {
 				'META-INF/README.md',
 				'META-INF/NOTICE.md'
 			]
+			// libVLC: guard against duplicate native libs
+			pickFirst '**/libvlc.so'
+			pickFirst '**/libvlcjni.so'
 		}
 	}
 	sourceSets {
@@ -140,6 +143,9 @@ dependencies {
 	implementation("com.github.wastaken90XD:kotatsu-parsers:$parsersVersion") {
 		exclude group: 'org.json', module: 'json'
 	}
+
+	// libVLC video engine for booru playback (BooruVlcPlayer / BooruMediaService)
+	implementation("org.videolan.android:libvlc-all:3.4.4")
 
 	coreLibraryDesugaring libs.desugar.jdk.libs
 	implementation libs.kotlin.stdlib

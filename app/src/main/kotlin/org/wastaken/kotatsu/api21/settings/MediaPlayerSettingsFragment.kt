@@ -26,6 +26,7 @@ import org.wastaken.kotatsu.api21.booru.media.BooruMediaService
 import org.wastaken.kotatsu.api21.booru.media.BooruMediaType
 import org.wastaken.kotatsu.api21.booru.media.AspectRatioMode
 import org.wastaken.kotatsu.api21.booru.media.BooruLongPressAction
+import org.wastaken.kotatsu.api21.booru.media.BooruVideoEngine
 import org.wastaken.kotatsu.api21.booru.media.DefaultPlayerMode
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowPosition
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowSize
@@ -73,6 +74,7 @@ class MediaPlayerSettingsFragment : BasePreferenceFragment(R.string.media_player
 	override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
 		addPreferencesFromResource(R.xml.pref_media_player)
 		bindEnumList(AppSettings.KEY_BOORU_LONG_PRESS_ACTION, BooruLongPressAction.entries)
+		bindEnumList(AppSettings.KEY_BOORU_VIDEO_ENGINE, BooruVideoEngine.entries)
 		bindEnumList(AppSettings.KEY_MEDIA_GIF_TAP_ACTION, GifTapAction.entries)
 		bindEnumList(AppSettings.KEY_MEDIA_VIDEO_TAP_ACTION, VideoTapAction.entries)
 		bindEnumList(AppSettings.KEY_MEDIA_DEFAULT_PLAYER_MODE, DefaultPlayerMode.entries)
@@ -191,6 +193,7 @@ class MediaPlayerSettingsFragment : BasePreferenceFragment(R.string.media_player
 				-> editor.putBoolean(key, value.toBoolean())
 				AppSettings.KEY_MEDIA_BLUR_INTENSITY -> editor.putInt(key, value.toIntOrNull() ?: 10)
 				AppSettings.KEY_BOORU_LONG_PRESS_ACTION -> editor.putEnumValue(key, runCatching { BooruLongPressAction.valueOf(value) }.getOrNull())
+				AppSettings.KEY_BOORU_VIDEO_ENGINE -> editor.putEnumValue(key, runCatching { BooruVideoEngine.valueOf(value) }.getOrNull())
 				AppSettings.KEY_MEDIA_GIF_TAP_ACTION -> editor.putEnumValue(key, runCatching { GifTapAction.valueOf(value) }.getOrNull())
 				AppSettings.KEY_MEDIA_VIDEO_TAP_ACTION -> editor.putEnumValue(key, runCatching { VideoTapAction.valueOf(value) }.getOrNull())
 				AppSettings.KEY_MEDIA_DEFAULT_PLAYER_MODE -> editor.putEnumValue(key, runCatching { DefaultPlayerMode.valueOf(value) }.getOrNull())

@@ -1068,5 +1068,6 @@
 	<string name="media_sources_reset">Reset to defaults</string>
 	<string name="media_sources_search_hint">Search sources</string>
 	<string name="booru_long_press_action">Long-press action</string>
+	<string name="booru_video_engine">Video engine</string>
 	<string name="media_sources_empty">No sources found</string>
 </resources>
