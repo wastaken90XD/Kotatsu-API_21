@@ -115,12 +115,14 @@ class BooruVlcPlayer(context: Context) {
 	}
 
 	fun seekTo(positionMs: Long) {
-		player.time = positionMs
+		// setTime() returns long (not a beans setter) - no Kotlin property write
+		player.setTime(positionMs)
 	}
 
 	/** Playback rate works on every API level (no MediaPlayer API-23 gate). */
 	fun setSpeed(rate: Float) {
-		player.rate = rate
+		// setRate() returns int status - call it as a method, not a property
+		player.setRate(rate)
 	}
 
 	val time: Long
