@@ -10,7 +10,7 @@ import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.materialswitch.MaterialSwitch
 import dagger.hilt.android.AndroidEntryPoint
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.wastaken.kotatsu.api21.R
@@ -104,7 +104,7 @@ class MediaPlayerSourcesFragment : BaseFragment<FragmentMediaPlayerSourcesBindin
 				onToggle: (MangaParserSource, Boolean) -> Unit,
 			) {
 				itemView.findViewById<TextView>(R.id.textTitle).text = row.title
-				val toggle = itemView.findViewById<SwitchMaterial>(R.id.switchEnabled)
+				val toggle = itemView.findViewById<MaterialSwitch>(R.id.switchEnabled)
 				toggle.setOnCheckedChangeListener(null)
 				toggle.isChecked = row.enabled
 				toggle.setOnCheckedChangeListener { _, isChecked -> onToggle(row.source, isChecked) }
