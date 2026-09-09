@@ -26,6 +26,7 @@ import org.wastaken.kotatsu.api21.core.network.DoHProvider
 import org.wastaken.kotatsu.api21.core.network.proxy.ProxyType
 import org.wastaken.kotatsu.api21.core.util.ext.connectivityManager
 import org.wastaken.kotatsu.api21.booru.media.AspectRatioMode
+import org.wastaken.kotatsu.api21.booru.media.BooruLongPressAction
 import org.wastaken.kotatsu.api21.booru.media.DefaultPlayerMode
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowPosition
 import org.wastaken.kotatsu.api21.booru.media.FloatingWindowSize
@@ -171,6 +172,11 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	var isMediaQueuePersist: Boolean
 		get() = prefs.getBoolean(KEY_MEDIA_QUEUE_PERSIST, true)
 		set(value) = prefs.edit { putBoolean(KEY_MEDIA_QUEUE_PERSIST, value) }
+
+	/** Grid tile long-press: immediate download (old behavior), popup menu, or batch selection. */
+	var booruLongPressAction: BooruLongPressAction
+		get() = prefs.getEnumValue(KEY_BOORU_LONG_PRESS_ACTION, BooruLongPressAction.DOWNLOAD)
+		set(value) = prefs.edit { putEnumValue(KEY_BOORU_LONG_PRESS_ACTION, value) }
 
 	/**
 	 * Per-source gate for the built-in media player ("media_player_source_*").
@@ -823,6 +829,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 
 		// booru media player ("Media player" settings section)
 		const val KEY_MEDIA_BLUR_THUMBNAILS = "media_blur_thumbnails"
+		const val KEY_BOORU_LONG_PRESS_ACTION = "booru_long_press_action"
 		const val KEY_MEDIA_BLUR_INTENSITY = "media_blur_intensity"
 		const val KEY_MEDIA_GIF_TAP_ACTION = "media_gif_tap_action"
 		const val KEY_MEDIA_VIDEO_TAP_ACTION = "media_video_tap_action"
@@ -869,6 +876,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 			KEY_MEDIA_QUEUE_PERSIST,
 			KEY_MEDIA_QUEUE_REPEAT,
 			KEY_MEDIA_QUEUE_SHUFFLE,
+			KEY_BOORU_LONG_PRESS_ACTION,
 		)
 		const val KEY_GRID_SIZE_PAGES = "grid_size_pages"
 		const val KEY_REMOTE_SOURCES = "remote_sources"

@@ -36,6 +36,12 @@
 			android:title="@string/media_video_tap_action"
 			app:useSimpleSummaryProvider="true" />
 
+		<ListPreference
+			android:entries="@array/booru_long_press_entries"
+			android:key="booru_long_press_action"
+			android:title="@string/booru_long_press_action"
+			app:useSimpleSummaryProvider="true" />
+
 	</PreferenceCategory>
 
 	<PreferenceCategory android:title="@string/media_player_section">

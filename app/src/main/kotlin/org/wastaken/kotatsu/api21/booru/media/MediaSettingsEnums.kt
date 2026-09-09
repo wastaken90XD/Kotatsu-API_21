@@ -21,3 +21,5 @@ enum class FloatingWindowPosition { TOP_RIGHT, BOTTOM_RIGHT, BOTTOM_LEFT }
 enum class AspectRatioMode { FIT, FILL, CROP, RATIO_16_9, RATIO_4_3 }
 
 enum class RepeatMode { NONE, ONE, ALL }
+
+enum class BooruLongPressAction { DOWNLOAD, MENU, SELECT }

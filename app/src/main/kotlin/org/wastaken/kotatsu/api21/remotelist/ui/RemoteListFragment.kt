@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.drop
 import androidx.appcompat.widget.PopupMenu
 import org.wastaken.kotatsu.api21.R
 import org.wastaken.kotatsu.api21.booru.media.BooruMediaService
+import org.wastaken.kotatsu.api21.booru.media.BooruLongPressAction
 import org.wastaken.kotatsu.api21.booru.media.BooruMediaType
 import org.wastaken.kotatsu.api21.booru.media.GifTapAction
 import org.wastaken.kotatsu.api21.booru.media.VideoTapAction
@@ -185,6 +186,12 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	override fun onItemClick(item: MangaListModel, view: View) {
 		if (viewModel.isBooru && item is BooruGridModel) {
+			if (settings.booruLongPressAction == BooruLongPressAction.SELECT) {
+				// SELECT mode restores the original tile behavior wholesale:
+				// clicks take the standard (selection-aware) path
+				super.onItemClick(item, view)
+				return
+			}
 			onBooruTileClick(item)
 			return
 		}
@@ -193,8 +200,17 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 
 	override fun onItemLongClick(item: MangaListModel, view: View): Boolean {
 		if (viewModel.isBooru && item is BooruGridModel) {
-			showBooruTileMenu(item, view)
-			return true
+			return when (settings.booruLongPressAction) {
+				BooruLongPressAction.DOWNLOAD -> {
+					viewModel.saveBooruImage(pageSaveHelper, item.manga)
+					true
+				}
+				BooruLongPressAction.MENU -> {
+					showBooruTileMenu(item, view)
+					true
+				}
+				BooruLongPressAction.SELECT -> super.onItemLongClick(item, view)
+			}
 		}
 		return super.onItemLongClick(item, view)
 	}
@@ -260,14 +276,17 @@ class RemoteListFragment : MangaListFragment(), FilterCoordinator.Owner {
 	private fun showBooruTileMenu(model: BooruGridModel, anchor: View) {
 		val menu = PopupMenu(requireContext(), anchor)
 		val isMedia = model.mediaType != null
-		menu.menu.add(0, ACTION_PLAY, 0, R.string.play).isEnabled = isMedia
-		menu.menu.add(0, ACTION_ADD_TO_QUEUE, 1, R.string.media_add_to_queue).isEnabled = isMedia
+		// play/queue honor the per-source media-player setting, not just the
+		// content-type badge: a disabled source keeps details/save only
+		val mediaEnabled = isMedia && settings.isMediaPlayerEnabledForSource(model.manga.source)
+		menu.menu.add(0, ACTION_PLAY, 0, R.string.play).isEnabled = mediaEnabled
+		menu.menu.add(0, ACTION_ADD_TO_QUEUE, 1, R.string.media_add_to_queue).isEnabled = mediaEnabled
 		menu.menu.add(0, ACTION_SAVE, 2, R.string.media_save_image_video)
 		menu.menu.add(0, ACTION_OPEN_DETAIL, 3, R.string.media_tap_open_detail)
 		menu.setOnMenuItemClickListener { menuItem ->
 			when (menuItem.itemId) {
 				ACTION_PLAY -> viewModel.routeBooruPost(model.manga) { openDetailsOrPreview(model) }
-				ACTION_ADD_TO_QUEUE -> viewModel.enqueueBooruPost(model.manga)
+				ACTION_ADD_TO_QUEUE -> if (mediaEnabled) viewModel.enqueueBooruPost(model.manga)
 				ACTION_SAVE -> viewModel.saveBooruImage(pageSaveHelper, model.manga)
 				ACTION_OPEN_DETAIL -> openDetailsOrPreview(model)
 			}

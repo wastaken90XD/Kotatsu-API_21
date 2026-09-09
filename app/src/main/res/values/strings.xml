@@ -1067,5 +1067,6 @@
 	<string name="media_player_sources_summary">Choose which sources may open GIFs and videos in the built-in media player</string>
 	<string name="media_sources_reset">Reset to defaults</string>
 	<string name="media_sources_search_hint">Search sources</string>
+	<string name="booru_long_press_action">Long-press action</string>
 	<string name="media_sources_empty">No sources found</string>
 </resources>

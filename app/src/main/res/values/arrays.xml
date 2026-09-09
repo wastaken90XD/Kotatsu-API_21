@@ -282,6 +282,11 @@
 	</string-array>
 
 	<!-- Booru media player settings (display labels; values are assigned programmatically) -->
+	<string-array name="booru_long_press_entries">
+		<item>Download immediately</item>
+		<item>Show menu</item>
+		<item>Select</item>
+	</string-array>
 	<string-array name="media_gif_tap_entries">
 		<item>@string/media_tap_load_inline</item>
 		<item>@string/media_tap_open_detail</item>
