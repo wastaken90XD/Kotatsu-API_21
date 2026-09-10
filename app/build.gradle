@@ -29,6 +29,14 @@ android {
 		versionCode = 1028
 		versionName = '9.1.4'
 		generatedDensities = []
+		ndk {
+			// Sideloaded builds run on the 32-bit armeabi-v7a tablet only: dropping
+			// the arm64/x86/x86_64 copies of every bundled native lib (libvlc.so,
+			// libavif_android.so, libconscrypt_jni.so, libc++_shared.so) removes
+			// ~60MB of binaries this device can never execute.
+			// Re-add 'arm64-v8a' here when installing on a modern phone.
+			abiFilters 'armeabi-v7a'
+		}
 		testInstrumentationRunner 'org.wastaken.kotatsu.api21.HiltTestRunner'
 		ksp {
 			arg('room.generateKotlin', 'true')
