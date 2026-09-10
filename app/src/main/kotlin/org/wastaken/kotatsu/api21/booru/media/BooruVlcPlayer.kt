@@ -78,9 +78,12 @@ class BooruVlcPlayer(context: Context) {
 		}
 		if (surfaceTexture != null && width > 0 && height > 0) {
 			runCatching {
-				player.vout.setVideoSurface(surfaceTexture)
-				player.vout.setWindowSize(width, height)
-				player.vout.attachViews()
+				// explicit method call: Kotlin's property synthesis mangles
+				// getVLCVout() to "vlcVout", plain "vout" does not resolve
+				val vout = player.getVLCVout()
+				vout.setVideoSurface(surfaceTexture)
+				vout.setWindowSize(width, height)
+				vout.attachViews()
 				viewsAttached = true
 			}
 		}
